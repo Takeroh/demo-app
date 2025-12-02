@@ -1,5 +1,7 @@
 body {
     background-color: #2a2b2f; 
+    max-width: 400px;
+    margin: auto;
     display: flex; 
     flex-direction: column;
     justify-content: center; 
@@ -9,28 +11,8 @@ body {
     text-align:center;
 }
 
-.mona-images {
-    max-width: 400px;
-    max-height: 400px;
-    border: 8px solid #fff;
-}
-
-.haiku-containers {
-    padding: 10px 0px 20px 0px;
-}
-
-.haikus {
-    font-size: 18px;
-    white-space: pre-wrap;
-}
-
-@media only screen and (max-width: 600px) {
-    .june-images {
-        max-width: 340px;
-        max-height: 340px;
-    }
-
-    .haikus {
-        font-size: 22px;
-    }
+h1 {
+    font-size: 40px;
+    margin-top: 20px;
+    margin-bottom: 10px;
 }

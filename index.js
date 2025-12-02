@@ -12,12 +12,12 @@ const PORT = process.env.PORT || 3000;
 // 静的ファイルを配信
 app.use(express.static("public"));
 
-// haikus.json を読み込む
-const haikus = JSON.parse(fs.readFileSync("haikus.json", "utf8"));
+// images.json を読み込む
+const images = JSON.parse(fs.readFileSync("images.json", "utf8"));
 
 // APIとして JSON を返す
-app.get("/haikus", (req, res) => {
-  res.json(haikus);
+app.get("/images", (req, res) => {
+  res.json(images);
 });
 
 // ルートは index.html を返す

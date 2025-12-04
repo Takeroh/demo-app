@@ -1,0 +1,15 @@
+{
+  "analyzed_data": [
+    {
+      "file_name": "image.png",
+      "analysis": {
+        "scenery": "nature_mountain",
+        "emotion": "calm"
+      },
+      "assets_id": {
+        "music": "music_nature_01",
+        "stamp": "stamp_coffee"
+      }
+    }
+  ]
+}

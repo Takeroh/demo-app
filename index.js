@@ -35,29 +35,22 @@ if (!fs.existsSync('uploads')) {
 // 3. ルーティング定義
 // ----------------------------------------
 
-// APIとして JSON を返す
-app.get("/images", (req, res) => {
-    // images.json を読み込む
-    // ファイルの存在確認やエラーハンドリングを追加すると、より堅牢になる
-    try {
-        const images = JSON.parse(fs.readFileSync("images.json", "utf8"));
-        res.json(images);
-    } catch (error) {
-        console.error("Error reading images.json:", error);
-        // アプリケーションの継続が困難な場合はここで終了処理を行う
-    }
-});
+// データディレクトリを定義
+const IMAGES_DIR = path.join(__dirname, '/public/results/images'); // JSONファイルを保存するディレクトリ
+const JSON_DIR = path.join(__dirname, 'data'); // JSONファイルを保存するディレクトリ
+if (!fs.existsSync(JSON_DIR)) {
+    fs.mkdirSync(JSON_DIR);
+}
 
-// ルートは index.html を返す
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-app.post('/api/upload', upload.array('photos', 10), async (req, res) => { // 👈 async を追加
-
+// 処理後の画像パスを格納したJSONファイルを動的に作成し、結果IDを返す
+app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
+    // ... (ファイルの存在チェックはそのまま) ...
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: 'ファイルがアップロードされていません。' });
     }
+
+    // 処理IDを生成 (タイムスタンプを使用)
+    const resultId = Date.now().toString();
 
     // 複数ファイルを処理するためのPromiseの配列を作成
     const processingPromises = req.files.map(file => 
@@ -68,27 +61,107 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => { // �
         // 全てのファイルの処理が完了するのを待つ (並行処理)
         const results = await Promise.all(processingPromises);
         
-        // 処理が全て成功したら、フロントエンドに結果を返す
+        // ⭐️ 処理後の画像URLのリストをJSONデータとして格納
+        const resultData = {
+            id: resultId,
+            timestamp: new Date().toISOString(),
+            imageUrls: results.map(r => r.imageUrl)
+        };
+        
+        // ⭐️ 動的JSONファイルを保存 (例: data/1700000000000.json)
+        const jsonFilePath = path.join(JSON_DIR, `${resultId}.json`);
+        fs.writeFileSync(jsonFilePath, JSON.stringify(resultData, null, 2));
+
+        // 処理が全て成功したら、結果IDと画面遷移情報をフロントエンドに返す
         res.status(200).json({ 
             message: '全ての画像処理が完了しました。',
             fileCount: results.length,
-            // 処理後の画像URLのリストを返す
-            imageUrls: results.map(r => r.imageUrl) 
+            resultId: resultId, // 新しく生成したID
+            redirectUrl: `/results/?id=${resultId}` // クエリパラメータにIDを付けて遷移
         });
 
     } catch (error) {
-        // 1つでもファイル処理が失敗したら、500エラーを返す
+        // ... (エラー処理はそのまま) ...
         console.error('画像処理中に全体エラーが発生:', error);
-        
-        // 🚨 重要: 失敗した場合、残っているファイルも含めて全て削除
-        // processImage内で一時ファイル削除は行っているため、
-        // エラーログを出力し、失敗レスポンスを返します。
         res.status(500).json({ error: `画像処理中にエラーが発生しました。詳細はログを確認してください。` });
-
     } finally {
-        // 処理の成否にかかわらず、残りの一時ファイルをクリーンアップ (念のため)
-        // ただし、Promise.allが終了した時点で、mapで生成された全ファイルは処理済みのはずです
+        // ... (finally ブロックはそのまま) ...
     }
+});
+
+
+// 処理結果JSONを動的に読み込んで返す
+// /api/results?id=1700000000000 の形式でアクセス
+app.get("/api/results", (req, res) => {
+    const resultId = req.query.id; // URLのクエリパラメータからIDを取得
+
+    if (!resultId) {
+        return res.status(400).json({ error: "結果ID (id) が指定されていません。" });
+    }
+    
+    const jsonFilePath = path.join(JSON_DIR, `${resultId}.json`);
+
+    try {
+        // JSONファイルを読み込む
+        const data = fs.readFileSync(jsonFilePath, "utf8");
+        const results = JSON.parse(data);
+        res.json(results);
+    } catch (error) {
+        // ファイルが見つからない、またはJSON形式がおかしい場合
+        console.error(`Error reading result file ${resultId}.json:`, error);
+        res.status(404).json({ error: `指定されたID (${resultId}) の処理結果が見つかりません。` });
+    }
+});
+
+// index.js (ルーティング定義セクション)
+
+// ⭐️ 新しいAPIエンドポイント: 処理結果と関連するファイルを削除
+app.delete('/api/results/:id', (req, res) => {
+    const resultId = req.params.id; // URLパスからIDを取得
+    
+    if (!resultId) {
+        return res.status(400).json({ error: "結果IDが指定されていません。" });
+    }
+
+    const jsonFilePath = path.join(JSON_DIR, `${resultId}.json`);
+
+    try {
+        // 1. JSONファイルを読み込み、画像パスのリストを取得
+        const data = fs.readFileSync(jsonFilePath, "utf8");
+        const results = JSON.parse(data);
+        const imageUrls = results.imageUrls || []; // 処理された画像パスのリスト
+
+        // 2. 関連する画像ファイルをすべて削除
+        imageUrls.forEach(url => {
+            // URLからファイルシステム上の絶対パスを再構築
+            // 例: /results/images/12345.jpg -> public/results/images/12345.jpg
+            const imageFilename = path.basename(url); // ファイル名のみを取得
+            const imageFilePath = path.join(IMAGES_DIR, imageFilename);
+            
+            if (fs.existsSync(imageFilePath)) {
+                fs.unlinkSync(imageFilePath);
+                console.log(`削除: 画像ファイル ${imageFilename}`);
+            }
+        });
+
+        // 3. メタデータJSONファイルを削除
+        fs.unlinkSync(jsonFilePath);
+        console.log(`削除: JSONファイル ${resultId}.json`);
+
+        // 成功レスポンス
+        res.status(200).json({ message: `処理結果ID ${resultId} に関連するすべてのファイルが削除されました。` });
+
+    } catch (error) {
+        // ファイルが見つからない、または削除に失敗した場合
+        console.error(`削除エラー (ID: ${resultId}):`, error);
+        // ファイルが見つからなかった場合も200を返すか、エラーを返すか選択
+        res.status(500).json({ error: `ファイルの削除中にエラーが発生しました。` });
+    }
+});
+
+// ルートは index.html を返す
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 

@@ -1,62 +1,66 @@
-// /images エンドポイントから images.json を取得
-fetch("/images")
-  .then(response => response.json())
-  .then(images => {
-    const container = document.querySelector('#images');
-    // const container = document.querySelector('#image-wrapper > div');
-    console.log(container);
-    images.forEach(item => {
-      // 画像
-      const img = document.createElement("img");
-      img.className = "image";
-      img.src = "/images/" + item.image;
-
-      // テキスト
-      const textDiv = document.createElement("div");
-      textDiv.className = "haiku-containers";
-
-      const p = document.createElement("p");
-      p.className = "images";
-      p.textContent = item.text;
-
-      textDiv.appendChild(p);
-
-      // ページに追加
-      container.appendChild(img);
-      // container.appendChild(textDiv);
-    });
-  })
-  .catch(err => console.error("Failed to load images:", err));
-
-
-// document.addEventListener('DOMContentLoaded', () => {
-//     const imageWrapper = document.querySelector('.image-wrapper');
-//     const prevButton = document.querySelector('.prev');
-//     const nextButton = document.querySelector('.next');
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. URLから現在のIDを取得 (例: results/?id=1700000000000)
+    const urlParams = new URLSearchParams(window.location.search);
+    const resultId = urlParams.get('id'); 
     
-//     // スクロールする量（画像一つ分の幅 + マージン）を計算
-//     const firstImage = document.querySelector('.image-wrapper .image');
-//     // 画像が存在し、スタイルが適用されているか確認
-//     if (!firstImage) return; 
+    if (!resultId) {
+        console.error("処理結果IDがありません。");
+        return;
+    }
 
-//     // 画像の幅 (offsetWidth) + 右マージン (例: 10px) の合計
-//     const scrollAmount = firstImage.offsetWidth + 20; // 左右マージン合計 20px と仮定 (10px + 10px)
+    // 2. クエリパラメータ付きのURLを作成
+    const apiUrl = `/api/results?id=${resultId}`; // ⭐️ IDを直接URLに結合
+    
+    // または、URLSearchParamsを使う（特殊文字がある場合に安全）
+    // const params = new URLSearchParams({ id: resultId });
+    // const apiUrl = `/api/results?${params.toString()}`;
 
-//     // 「次へ」ボタンの処理
-//     nextButton.addEventListener('click', () => {
-//         // 現在の位置から scrollAmount 分だけ右にスクロール
-//         imageWrapper.scrollBy({
-//             left: scrollAmount,
-//             behavior: 'smooth' // スムーズなアニメーションでスクロール
-//         });
-//     });
+    try {
+        // 3. APIにアクセス
+        const response = await fetch(apiUrl);
+        const resultData = await response.json();
 
-//     // 「前へ」ボタンの処理
-//     prevButton.addEventListener('click', () => {
-//         // 現在の位置から scrollAmount 分だけ左にスクロール
-//         imageWrapper.scrollBy({
-//             left: -scrollAmount,
-//             behavior: 'smooth' // スムーズなアニメーションでスクロール
-//         });
-//     });
-// });
+        if (response.ok) {
+            console.log("結果データ:", resultData);
+            const container = document.querySelector('#images');
+            for (const imageUrl of resultData.imageUrls) {
+                // 画像要素を作成してコンテナに追加
+                const img = document.createElement("img");
+                img.className = "image";
+                img.src = imageUrl; // 直接URLを使用
+                container.appendChild(img);
+            }
+            const del_button = document.querySelector('#del_button');
+            del_button.classList.add('visible');
+            del_button.addEventListener('click', async () => {
+                if (!confirm('本当にこの結果とすべての関連画像を削除しますか？')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/results/${resultId}`, {
+                        method: 'DELETE' // ⭐️ DELETEメソッドでAPIを呼び出す
+                    });
+
+                    if (response.ok) {
+                        alert('削除が完了しました。トップページに戻ります。');
+                        // 削除後、ホームなど他のページに遷移させる
+                        window.location.href = '/'; 
+                    } else {
+                        const errorResult = await response.json();
+                        alert(`削除に失敗しました: ${errorResult.error}`);
+                    }
+                } catch (error) {
+                    alert('通信エラーにより削除できませんでした。');
+                    console.error(error);
+                }
+            });
+
+        } else {
+            console.error("データ取得失敗:", resultData.error);
+        }
+
+    } catch (error) {
+        console.error("通信エラー:", error);
+    }
+});

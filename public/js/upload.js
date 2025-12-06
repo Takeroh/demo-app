@@ -44,11 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 // 成功時の処理：画像処理が完了したと見なし、画面遷移を行う
 
-                statusMessage.textContent = `✅ 処理完了！ ${result.fileCount} 枚のファイルを処理しました。画面遷移します...`;
+                statusMessage.textContent = `✅ 処理完了！ ${result.fileCount} 枚のファイルを処理しました。${result.redirectPath}に画面遷移します...`;
                 statusMessage.style.color = 'green';
                 
                 // 画面遷移の実行 (バックエンドからの指示、または固定パスを使用)
-                const redirectPath = '/results/';
+                const redirectPath = result.redirectUrl;
                 
                 // 画面遷移を数秒遅らせることで、完了メッセージをユーザーに見せる (任意)
                 setTimeout(() => {

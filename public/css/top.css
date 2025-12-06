@@ -1,0 +1,46 @@
+.title{
+    width: 250px;
+    display: block;
+    margin: 20px auto 0 auto;
+}
+
+.catch-copy{
+    text-align: center;
+    color: #638297;
+    font-family: new-atten-round-book, sans-serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 18px;
+    margin: 0;
+}
+
+.back-wrapper{
+    background-color: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    margin: 20px;
+}
+
+h2{
+    color: #638297;
+}
+
+#file-select{
+    content: 'ファイルを選択';
+    display: block;
+    margin: 0 auto;
+    width: 150px;
+    height: 50px;
+    background-color: #e59941;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 50px;
+} 
+
+p{
+    color: #638297;
+    margin: 0 20px;
+}

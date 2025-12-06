@@ -1,12 +1,42 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('photo-files');
+    const fileSelect = document.getElementById("file-select");
     const form = document.getElementById('upload-form');
     const statusMessage = document.getElementById('status-message');
     const uploadButton = form.querySelector('button[type="submit"]'); // ボタンを取得
 
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
+    fileSelect.addEventListener("click", (e) => {
+        if (fileInput) {
+            fileInput.click();
+        }
+    }, false);
 
-        const fileInput = document.getElementById('photo-files');
+    fileInput.addEventListener('change', function() {
+        const statusText = document.querySelector('.file-status-text');
+        const input = this;
+        if (input.files.length > 0) {
+            if (input.multiple) {
+                // 複数選択の場合
+                statusText.textContent = `${input.files.length} 個のファイルが選択されました`;
+            } else {
+                // 単数選択の場合
+                statusText.textContent = input.files[0].name;
+            }
+            // statusMessage.textContent = 'ファイル選択完了。すぐにアップロードを開始します...';
+            // statusMessage.style.color = 'orange'; 
+            // form.submit(); // フォームを自動送信
+        } else {
+            statusText.textContent = '選択されていません';
+        }
+    });
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();    
+        // if (event) {
+        //     alert(event); // または画面上の要素に表示
+        //     sessionStorage.removeItem('upload-status'); // 一度表示したら削除
+        // }
+
         const files = fileInput.files;
 
         if (files.length === 0) {
@@ -42,13 +72,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // 3. 応答に基づく処理
             // ------------------------------------------
             if (response.ok) {
-                // 成功時の処理：画像処理が完了したと見なし、画面遷移を行う
-
-                statusMessage.textContent = `✅ 処理完了！ ${result.fileCount} 枚のファイルを処理しました。${result.redirectPath}に画面遷移します...`;
-                statusMessage.style.color = 'green';
-                
                 // 画面遷移の実行 (バックエンドからの指示、または固定パスを使用)
                 const redirectPath = result.redirectUrl;
+
+                // 成功時の処理：画像処理が完了したと見なし、画面遷移を行う
+                statusMessage.textContent = `✅ 処理完了！ ${result.fileCount} 枚のファイルを処理しました。${redirectPath}に画面遷移します...`;
+                statusMessage.style.color = 'green';
+        
                 
                 // 画面遷移を数秒遅らせることで、完了メッセージをユーザーに見せる (任意)
                 setTimeout(() => {

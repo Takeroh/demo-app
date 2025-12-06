@@ -1,12 +1,44 @@
 # scripts/image_processor.py
 import sys
 import os
-from PIL import Image
+from PIL import Image, ExifTags
+
+# Exif情報に基づいて画像を回転する関数
+def rotate_image_based_on_exif(img):
+    try:
+        exif = img._getexif()
+    except Exception:
+        # Exif情報がない場合はそのまま返す
+        return img
+    
+    if exif is None:
+        return img
+
+    for orientation in ExifTags.TAGS.keys():
+        if ExifTags.TAGS[orientation] == 'Orientation':
+            break
+
+    o = exif.get(orientation)
+    
+    # Orientationタグの値に基づいて回転/反転を適用
+    if o == 3:
+        img = img.transpose(Image.ROTATE_180)
+    elif o == 6:
+        img = img.transpose(Image.ROTATE_270)
+    elif o == 8:
+        img = img.transpose(Image.ROTATE_90)
+        
+    # ⚠️ 注意: Pillowの最新版では、img.load() と img.transpose() の後に
+    # img.save() の前に img.getexif().get(orientation) を削除する処理が推奨されますが、
+    # シンプルな自動修正なら上記のコードで動作することが多いです。
+    
+    return img
 
 def process_image(input_path, output_path):
     try:
         # 1. 入力パスから画像を読み込む
         img = Image.open(input_path)
+        img = rotate_image_based_on_exif(img) # Exif情報に基づいて回転
         
         # 2. 画像処理のロジックをここに記述
         new_img = img # (仮) 入力画像をコピー

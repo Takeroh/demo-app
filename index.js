@@ -1,5 +1,5 @@
 // ----------------------------------------
-// 1. import 文
+// 1. インポートと環境設定
 // ----------------------------------------
 import express from "express";
 import path from "path";
@@ -32,25 +32,20 @@ if (!fs.existsSync('uploads')) {
 }
 
 // ----------------------------------------
-// 3. データ読み込み (サーバー起動時)
-// ----------------------------------------
-
-// images.json を読み込む
-// ファイルの存在確認やエラーハンドリングを追加すると、より堅牢になる
-try {
-    const images = JSON.parse(fs.readFileSync("images.json", "utf8"));
-} catch (error) {
-    console.error("Error reading images.json:", error);
-    // アプリケーションの継続が困難な場合はここで終了処理を行う
-}
-
-// ----------------------------------------
-// 4. ルーティング定義
+// 3. ルーティング定義
 // ----------------------------------------
 
 // APIとして JSON を返す
 app.get("/images", (req, res) => {
-  res.json(images);
+    // images.json を読み込む
+    // ファイルの存在確認やエラーハンドリングを追加すると、より堅牢になる
+    try {
+        const images = JSON.parse(fs.readFileSync("images.json", "utf8"));
+        res.json(images);
+    } catch (error) {
+        console.error("Error reading images.json:", error);
+        // アプリケーションの継続が困難な場合はここで終了処理を行う
+    }
 });
 
 // ルートは index.html を返す
@@ -170,7 +165,7 @@ function cleanupSingleFile(filePath) {
 }
 
 // ----------------------------------------
-// 5. サーバー起動
+// 4. サーバー起動
 // ----------------------------------------
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

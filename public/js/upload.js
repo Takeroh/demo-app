@@ -1,9 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('upload-form');
     const statusMessage = document.getElementById('status-message');
+    const uploadButton = form.querySelector('button[type="submit"]'); // ボタンを取得
 
     form.addEventListener('submit', async (event) => {
-        event.preventDefault(); // フォームの標準の送信動作をキャンセル
+        event.preventDefault();
 
         const fileInput = document.getElementById('photo-files');
         const files = fileInput.files;
@@ -13,35 +14,109 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 1. FormDataオブジェクトを作成
-        // ファイルをアップロードするために必要な形式
+        // ------------------------------------------
+        // 1. アップロード準備とUIの無効化
+        // ------------------------------------------
         const formData = new FormData();
-        
-        // 2. 選択されたすべてのファイルを 'photos' という名前でFormDataに追加
         for (let i = 0; i < files.length; i++) {
-            formData.append('photos', files[i]); // バックエンドはこの 'photos' でファイルを受け取る
+            formData.append('photos', files[i]);
         }
-
-        statusMessage.textContent = 'アップロード中...';
+        
+        // ボタンを無効化し、重複送信を防ぐ
+        uploadButton.disabled = true;
+        statusMessage.textContent = 'アップロード中... サーバーで画像処理を開始しています。';
+        statusMessage.style.color = 'orange'; // 処理中であることを視覚的に示す
 
         try {
-            // 3. バックエンドのAPIエンドポイントにPOSTリクエストを送信
+            // ------------------------------------------
+            // 2. バックエンドAPIにリクエストを送信
+            // ------------------------------------------
             const response = await fetch('/api/upload', {
                 method: 'POST',
-                // FormDataを使用する場合、Content-Typeヘッダーはブラウザが自動で設定するため不要（重要！）
                 body: formData 
             });
 
+            const result = await response.json(); // サーバーからのJSON応答を解析
+
+            // ------------------------------------------
+            // 3. 応答に基づく処理
+            // ------------------------------------------
             if (response.ok) {
-                const result = await response.json();
-                statusMessage.textContent = `アップロード成功！ ${result.fileCount} 枚のファイルを処理中です。${result.inputFile} から ${result.outputFile} へ。`;
-                // TODO: 処理結果の表示など、次のステップに進む
+                // 成功時の処理：画像処理が完了したと見なし、画面遷移を行う
+
+                statusMessage.textContent = `✅ 処理完了！ ${result.fileCount} 枚のファイルを処理しました。画面遷移します...`;
+                statusMessage.style.color = 'green';
+                
+                // 画面遷移の実行 (バックエンドからの指示、または固定パスを使用)
+                const redirectPath = '/results/';
+                
+                // 画面遷移を数秒遅らせることで、完了メッセージをユーザーに見せる (任意)
+                setTimeout(() => {
+                    window.location.href = redirectPath;
+                }, 1500); // 1.5秒後に遷移
+
             } else {
-                statusMessage.textContent = `アップロード失敗: ${response.statusText}`;
+                // 失敗時の処理：HTTPエラー（4xx, 5xx）の場合
+                statusMessage.textContent = `❌ 処理失敗: ${result.error || response.statusText}`;
+                statusMessage.style.color = 'red';
             }
         } catch (error) {
-            statusMessage.textContent = `通信エラー: ${error.message}`;
-            console.error(error);
+            // 通信エラー（ネットワーク障害など）の場合
+            statusMessage.textContent = `❌ 通信エラー: ${error.message}`;
+            statusMessage.style.color = 'red';
+        } finally {
+            // 処理が完了 (成功/失敗) した後、ボタンを再度有効化する (遷移しない場合に備えて)
+            uploadButton.disabled = false;
         }
     });
 });
+
+// document.addEventListener('DOMContentLoaded', () => {
+//     const form = document.getElementById('upload-form');
+//     const statusMessage = document.getElementById('status-message');
+
+//     form.addEventListener('submit', async (event) => {
+//         event.preventDefault(); // フォームの標準の送信動作をキャンセル
+
+//         const fileInput = document.getElementById('photo-files');
+//         const files = fileInput.files;
+
+//         if (files.length === 0) {
+//             statusMessage.textContent = 'ファイルを選択してください。';
+//             return;
+//         }
+
+//         // 1. FormDataオブジェクトを作成
+//         // ファイルをアップロードするために必要な形式
+//         const formData = new FormData();
+        
+//         // 2. 選択されたすべてのファイルを 'photos' という名前でFormDataに追加
+//         for (let i = 0; i < files.length; i++) {
+//             formData.append('photos', files[i]); // バックエンドはこの 'photos' でファイルを受け取る
+//         }
+
+//         statusMessage.textContent = 'アップロード中...';
+
+//         try {
+//             // 3. バックエンドのAPIエンドポイントにPOSTリクエストを送信
+//             const response = await fetch('/api/upload', {
+//                 method: 'POST',
+//                 // FormDataを使用する場合、Content-Typeヘッダーはブラウザが自動で設定するため不要（重要！）
+//                 body: formData 
+//             });
+
+//             if (response.ok) {
+//                 const result = await response.json();
+//                 statusMessage.textContent = `アップロード成功！ ${result.fileCount} 枚のファイルを処理中です。`;
+//                 // 入力ファイル： result.inputFile
+//                 // 出力ファイル： result.outputFile
+//                 // TODO: 処理結果の表示など、次のステップに進む
+//             } else {
+//                 statusMessage.textContent = `アップロード失敗: ${response.statusText}`;
+//             }
+//         } catch (error) {
+//             statusMessage.textContent = `通信エラー: ${error.message}`;
+//             console.error(error);
+//         }
+//     });
+// });

@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 img.src = imageUrl; // 直接URLを使用
                 container.appendChild(img);
             }
-            const del_button = document.querySelector('#del_button');
+            const del_button = document.querySelector('#del-button');
             del_button.classList.add('visible');
             del_button.addEventListener('click', async () => {
                 if (!confirm('本当にこの結果とすべての関連画像を削除しますか？')) {

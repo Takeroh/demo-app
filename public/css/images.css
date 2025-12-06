@@ -1,3 +1,9 @@
+.title{
+    width: 150px;
+    display: block;
+    margin: 20px auto 0 auto;
+}
+
 #images{
     scroll-snap-type: x mandatory;
     width: 80%;
@@ -14,17 +20,18 @@
     flex: none;
 }
 
-#del_button{
+#del-button{
     display: none;
 }
 
-#del_button.visible{
+#del-button.visible{
     display: block;
     margin: 20px auto;
     padding: 10px 20px;
     font-size: 16px;
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--color-orange);
+    color: #fff;
+    font-weight: 800;
     border: none;
     border-radius: 5px;
     cursor: pointer;

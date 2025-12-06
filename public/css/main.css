@@ -1,3 +1,9 @@
+:root {
+    --color-navy: #638297;
+    --color-orange: #e59941;
+    --font-italic: new-atten-round-book, sans-serif;
+}
+
 body {
     background-image: url(../images/background.jpeg);
     background-size: cover;

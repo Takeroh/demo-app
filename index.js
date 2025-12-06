@@ -65,6 +65,7 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
         const resultData = {
             id: resultId,
             timestamp: new Date().toISOString(),
+            fileCount: results.length,
             imageUrls: results.map(r => r.imageUrl)
         };
         

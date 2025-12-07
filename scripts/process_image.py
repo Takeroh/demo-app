@@ -92,7 +92,7 @@ def get_gps(exif_dict: Dict[int, Any]) -> Optional[Dict[str, float]]:
         # 10進数に変換
         lat = _convert_to_degrees(gps_info[lat_tag])
         lon = _convert_to_degrees(gps_info[lon_tag])
-        print(f"Extracted Raw Lat/Lon: {lat}, {lon}", file=sys.stderr)
+        # print(f"Extracted Raw Lat/Lon: {lat}, {lon}", file=sys.stderr)
         # 南北/東西の情報を適用
         if gps_info[lat_ref_tag] != 'N':
             lat *= -1

@@ -22,14 +22,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (response.ok) {
             console.log("結果データ:", resultData);
+
+            const sortedImageData = resultData.imageData.sort((a, b) => {
+                // 撮影日時順にソート（ISO 8601形式の文字列として直接比較）
+                if (a.date_time < b.date_time) {
+                    return -1; // a を b より前に配置
+                }
+                if (a.date_time > b.date_time) {
+                    return 1;  // a を b より後に配置
+                }
+                return 0; // 順序変更なし
+            });
+
+            // 4. 画像を画面に表示
+
             const container = document.querySelector('#images');
-            for (const imageData of resultData.imageData) {
-                // 画像要素を作成してコンテナに追加
-                const img = document.createElement("img");
-                img.className = "image";
-                img.src = imageData.filepath; // 直接URLを使用
-                container.appendChild(img);
-            }
+            sortedImageData.forEach((imageData, index) => {
+                let date_time = '日時情報なし';
+                if (imageData.date_time) {
+                    // YYYY-MM-DDTHH:MM:SS 形式から日付と時刻を抽出・整形
+                    const date = new Date(imageData.date_time);
+                    date_time = date.toLocaleString('ja-JP', { 
+                        year: 'numeric', month: '2-digit', day: '2-digit', 
+                        hour: '2-digit', minute: '2-digit', second: '2-digit' 
+                    });
+                }
+
+                let location = '場所情報なし';
+                if (imageData.location && imageData.location.latitude && imageData.location.longitude) {
+                    const lat = imageData.location.latitude.toFixed(5);
+                    const lon = imageData.location.longitude.toFixed(5);
+                    location = `緯度: ${lat}, 経度: ${lon}`;
+                    
+                    // Google Mapsへのリンクを追加することも可能
+                    location += ` (<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank">地図で確認</a>)`;
+                }
+
+                imageItem = `
+                <div class="image-item">
+                    <p><strong>撮影日時:</strong> ${date_time}</p>
+                    <p><strong>撮影場所:</strong> ${location}</p>
+                    <img class="image" src="${imageData.filepath}" alt="写真 ${index + 1}">
+                    <p class="num">${index + 1} / ${sortedImageData.length}</p>
+                </div>
+                `
+                container.insertAdjacentHTML('beforeend', imageItem);
+            });
+
             const del_button = document.querySelector('#del-button');
             del_button.classList.add('visible');
             del_button.addEventListener('click', async () => {

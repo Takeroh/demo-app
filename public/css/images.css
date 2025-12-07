@@ -13,11 +13,24 @@
     -webkit-overflow-scrolling: touch; /* スマホ対応のため必須 */
     overflow-scrolling: touch; /* スマホ対応のため必須 */
 }
-#images > .image{
+#images > .image-item{
     scroll-snap-align: center;
     height: 100%;
     width: 100%;
     flex: none;
+}
+
+.image-item > p{
+    margin: 0 auto 10px;
+}
+
+.image-item > .image{
+    width: 100%;
+}
+
+.image-item > .num{
+    margin-top: 10px;
+    color: #fff;
 }
 
 #del-button{

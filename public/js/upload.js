@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileSelect = document.getElementById("file-select");
     const form = document.getElementById('upload-form');
     const statusMessage = document.getElementById('status-message');
-    const uploadButton = form.querySelector('button[type="submit"]'); // ボタンを取得
+    const uploadButton = document.getElementById('submit-button'); // ボタンを取得
 
     fileSelect.addEventListener("click", (e) => {
         if (fileInput) {
@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 単数選択の場合
                 statusText.textContent = input.files[0].name;
             }
+            uploadButton.classList.add('valid'); // ボタンを有効化
             // statusMessage.textContent = 'ファイル選択完了。すぐにアップロードを開始します...';
             // statusMessage.style.color = 'orange'; 
             // form.submit(); // フォームを自動送信

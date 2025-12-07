@@ -23,11 +23,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (response.ok) {
             console.log("結果データ:", resultData);
             const container = document.querySelector('#images');
-            for (const imageUrl of resultData.imageUrls) {
+            for (const imageData of resultData.imageData) {
                 // 画像要素を作成してコンテナに追加
                 const img = document.createElement("img");
                 img.className = "image";
-                img.src = imageUrl; // 直接URLを使用
+                img.src = imageData.filepath; // 直接URLを使用
                 container.appendChild(img);
             }
             const del_button = document.querySelector('#del-button');

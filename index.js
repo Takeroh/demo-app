@@ -2,7 +2,7 @@
 // 1. インポートと環境設定
 // ----------------------------------------
 import express from "express";
-import path from "path";
+import path, { parse } from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import multer from 'multer';
@@ -66,7 +66,7 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
             id: resultId,
             timestamp: new Date().toISOString(),
             fileCount: results.length,
-            imageUrls: results.map(r => r.imageUrl)
+            imageData: results.map(r => r)
         };
         
         // ⭐️ 動的JSONファイルを保存 (例: data/1700000000000.json)
@@ -177,8 +177,9 @@ function processImage(file, pathModule, dirname) {
         const tempFilePath = file.path;
         const originalName = file.originalname;
         const outputDir = pathModule.join(dirname, 'public', 'results', 'images');
-        const outputFileName = Date.now() + '-' + originalName.replace(/[^a-z0-9.]/gi, '_') + pathModule.extname(originalName);
-        const outputFilePath = pathModule.join(outputDir, outputFileName);
+        const resultId = Date.now().toString();
+        // const outputFileName = Date.now() + '-' + originalName.replace(/[^a-z0-9.]/gi, '_') + pathModule.extname(originalName);
+        // const outputFilePath = pathModule.join(outputDir, outputFileName);
 
         // 永続ディレクトリの確認と作成（初回のみ実行される）
         if (!fs.existsSync(outputDir)) {
@@ -188,10 +189,22 @@ function processImage(file, pathModule, dirname) {
         // Pythonプロセスの実行ロジック...
         const pythonProcess = spawn('python3', [
             './scripts/process_image.py',
-            tempFilePath,                 
-            outputFilePath                
+            tempFilePath,
+            // outputFilePath,                
+            outputDir,
+            resultId,
+            originalName
         ]);
-        
+
+        let pythonOutput = '';
+        pythonProcess.stdout.on('data', (data) => {
+            pythonOutput += data.toString();
+        });
+        pythonProcess.stdout.on('data', (data) => {
+            // dataはBufferとして渡されるため、toString()で文字列に変換して表示
+            console.log(`[Python Output]: ${data.toString().trim()}`);
+        });
+
         let pythonErrorOutput = '';
         pythonProcess.stderr.on('data', (data) => {
             pythonErrorOutput += data.toString();
@@ -216,12 +229,33 @@ function processImage(file, pathModule, dirname) {
                 reject(new Error(errorMsg));
                 return;
             }
-            
-            // 処理成功: 解決（resolve）
-            resolve({ 
-                imageUrl: `/results/images/${outputFileName}`,
-                success: true
-            });
+
+            try {
+                // Pythonからの出力をJSONとしてパース
+                const rawOutput = pythonOutput.trim();
+                const parsedResult = JSON.parse(rawOutput);
+
+                // 必須データが存在するかチェック
+                if (!parsedResult.filepath) {
+                // if (!parsedResult.filepath || !parsedResult.date_time || !parsedResult.location) {
+                    throw new Error("Pythonからの出力に必要なデータが不足しています。");
+                }
+                
+                // 成功: ファイル名とメタデータを格納したオブジェクトを返す
+                resolve(parsedResult); 
+
+            } catch (e) {
+                // JSONパースエラーまたはデータ不足のエラー処理
+                console.error(`Python出力解析エラー: ${e.message}`, { output: pythonOutput, error: pythonErrorOutput });
+                reject(new Error(`Pythonスクリプトからの結果解析に失敗しました。`));
+            }
+
+            // // 処理成功: 解決（resolve）
+            // resolve({ 
+            //     // imageUrl: `/results/images/${outputFileName}`,
+            //     imageData: parsedResult,
+            //     success: true
+            // });
         });
     });
 }

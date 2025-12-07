@@ -130,7 +130,11 @@ app.delete('/api/results/:id', (req, res) => {
         // 1. JSONファイルを読み込み、画像パスのリストを取得
         const data = fs.readFileSync(jsonFilePath, "utf8");
         const results = JSON.parse(data);
-        const imageUrls = results.imageUrls || []; // 処理された画像パスのリスト
+        // const imageUrls = results.imageUrls || []; // 処理された画像パスのリスト
+        const imageUrls = [];
+        for (const imageData of results.imageData) {
+            imageUrls.push(imageData.filepath);
+        }
 
         // 2. 関連する画像ファイルをすべて削除
         imageUrls.forEach(url => {
@@ -199,15 +203,13 @@ function processImage(file, pathModule, dirname) {
         let pythonOutput = '';
         pythonProcess.stdout.on('data', (data) => {
             pythonOutput += data.toString();
-        });
-        pythonProcess.stdout.on('data', (data) => {
-            // dataはBufferとして渡されるため、toString()で文字列に変換して表示
-            console.log(`[Python Output]: ${data.toString().trim()}`);
+            console.log(`[Python STDOUT]: ${pythonOutput}`);
         });
 
         let pythonErrorOutput = '';
         pythonProcess.stderr.on('data', (data) => {
             pythonErrorOutput += data.toString();
+            console.error(`[Python STDERR]: ${pythonErrorOutput}`);
         });
 
         // システムエラー

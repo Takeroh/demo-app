@@ -1,6 +1,7 @@
 import sys
 import os
 from datetime import datetime
+from fractions import Fraction
 from typing import Dict, Any, Optional, Tuple
 import json
 from PIL import Image, ExifTags
@@ -48,9 +49,9 @@ def _convert_to_degrees(value: Tuple[Tuple[int, int], ...]) -> float:
     """
     GPS座標のDMS形式 (Degree/Minute/Second) を10進数に変換する補助関数。
     """
-    d = value[0][0] / value[0][1]
-    m = value[1][0] / value[1][1]
-    s = value[2][0] / value[2][1]
+    d = float(value[0])
+    m = float(value[1])
+    s = float(value[2])
     return d + (m / 60.0) + (s / 3600.0)
 
 
@@ -59,15 +60,19 @@ def get_gps(exif_dict: Dict[int, Any]) -> Optional[Dict[str, float]]:
     Exif辞書から緯度と経度を抽出し、辞書で返す。
     """
     if not exif_dict:
+        print("GPS Warning: Exif data is missing.", file=sys.stderr)
         return None
 
     gps_info_tag_key = next((k for k, v in ExifTags.TAGS.items() if v == 'GPSInfo'), None)
     
     if not gps_info_tag_key or gps_info_tag_key not in exif_dict:
+        print("GPS Warning: GPSInfo tag is missing from Exif.", file=sys.stderr)
         return None
     
     gps_info = exif_dict[gps_info_tag_key]
     gps_tag_map = {v: k for k, v in ExifTags.GPSTAGS.items()}
+    # print(f"GPS Info Tags: {gps_info}", file=sys.stderr)
+    # print(f"GPS Tag Map: {gps_tag_map}", file=sys.stderr)
     
     # 必要なGPSタグのキーを取得
     lat_tag = gps_tag_map.get('GPSLatitude')
@@ -75,23 +80,29 @@ def get_gps(exif_dict: Dict[int, Any]) -> Optional[Dict[str, float]]:
     lat_ref_tag = gps_tag_map.get('GPSLatitudeRef')
     lon_ref_tag = gps_tag_map.get('GPSLongitudeRef')
 
+    # print(f"[GPS Tags] - Lat: {lat_tag}, Lon: {lon_tag}, LatRef: {lat_ref_tag}, LonRef: {lon_ref_tag}", file=sys.stderr)
+    # print(f"[GPS Info] - Lat:{gps_info[lat_tag]}, Lon{gps_info[lon_tag]}", file=sys.stderr)
+    # print(f"[GPS Info Type] - Lat:{type(gps_info[lat_tag])}, Lon{type(gps_info[lon_tag])}", file=sys.stderr)
+    # print(f"[GPS Info Type2] - Lat:{type(gps_info[lat_tag][0])}, Lon{type(gps_info[lon_tag][0])}", file=sys.stderr)
     if not all(tag in gps_info for tag in [lat_tag, lon_tag, lat_ref_tag, lon_ref_tag]):
+        print("GPS Warning: One or more critical GPS tags (Lat/Lon/Ref) are missing.", file=sys.stderr)
         return None
 
     try:
         # 10進数に変換
         lat = _convert_to_degrees(gps_info[lat_tag])
         lon = _convert_to_degrees(gps_info[lon_tag])
-        
+        print(f"Extracted Raw Lat/Lon: {lat}, {lon}", file=sys.stderr)
         # 南北/東西の情報を適用
         if gps_info[lat_ref_tag] != 'N':
             lat *= -1
         if gps_info[lon_ref_tag] != 'E':
             lon *= -1
-
+        print(f"Successfully extracted GPS: {lat}, {lon}", file=sys.stderr)
         return {'latitude': lat, 'longitude': lon}
 
-    except Exception:
+    except Exception as e:
+        print(f"GPS Warning: Error during conversion: {e}", file=sys.stderr)
         return None
 
 # =================================================================

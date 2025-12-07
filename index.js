@@ -53,9 +53,21 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
     const resultId = Date.now().toString();
 
     // 複数ファイルを処理するためのPromiseの配列を作成
-    const processingPromises = req.files.map(file => 
-        processImage(file, path, __dirname)
-    );
+    const processingPromises = req.files.map(async file => {
+        
+        // 1. 画像処理とメタデータ抽出を実行
+        const processedResult = await processImage(file, path, __dirname); // { filepath, date_time, location } 
+
+        // 2. 取得した画像データを使って効果音・スタンプを決定
+        // metadataをJSON文字列に変換してPythonに渡す
+        const effectsResult = await decideEffects(processedResult); // { filepath, analysis, effects }
+
+        // 3. 最終結果を結合して返す
+        return {
+            ...processedResult, // 撮影日時や場所
+            ...effectsResult   // スタンプや効果音情報
+        };
+    });
 
     try {
         // 全てのファイルの処理が完了するのを待つ (並行処理)
@@ -69,6 +81,7 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
             imageData: results.map(r => r)
         };
         
+
         // ⭐️ 動的JSONファイルを保存 (例: data/1700000000000.json)
         const jsonFilePath = path.join(JSON_DIR, `${resultId}.json`);
         fs.writeFileSync(jsonFilePath, JSON.stringify(resultData, null, 2));
@@ -176,7 +189,6 @@ app.get("/", (req, res) => {
 
 // 単一ファイルを処理し、一時ファイルを削除する Promise ベースの関数
 function processImage(file, pathModule, dirname) {
-    
     return new Promise((resolve, reject) => {
         const tempFilePath = file.path;
         const originalName = file.originalname;
@@ -200,16 +212,18 @@ function processImage(file, pathModule, dirname) {
             originalName
         ]);
 
+        // 標準出力 (Python出力結果)
         let pythonOutput = '';
         pythonProcess.stdout.on('data', (data) => {
             pythonOutput += data.toString();
-            console.log(`[Python STDOUT]: ${pythonOutput}`);
+            console.log(`[Python ProcessImage STDOUT]: ${pythonOutput}`);
         });
 
+        // 標準エラー (デバッグログ、エラーメッセージ)
         let pythonErrorOutput = '';
         pythonProcess.stderr.on('data', (data) => {
             pythonErrorOutput += data.toString();
-            console.error(`[Python STDERR]: ${pythonErrorOutput}`);
+            console.error(`[Python ProcessImage STDERR]: ${pythonErrorOutput}`);
         });
 
         // システムエラー
@@ -252,12 +266,6 @@ function processImage(file, pathModule, dirname) {
                 reject(new Error(`Pythonスクリプトからの結果解析に失敗しました。`));
             }
 
-            // // 処理成功: 解決（resolve）
-            // resolve({ 
-            //     // imageUrl: `/results/images/${outputFileName}`,
-            //     imageData: parsedResult,
-            //     success: true
-            // });
         });
     });
 }
@@ -271,6 +279,64 @@ function cleanupSingleFile(filePath) {
         } else {
             console.log(`一時ファイル ${filePath} を削除しました。`);
         }
+    });
+}
+
+// 効果音・スタンプを決定する関数
+function decideEffects(imageData) {
+    return new Promise((resolve, reject) => {
+        // Pythonに渡すデータをJSON文字列に変換
+        const jsonString = JSON.stringify(imageData);
+
+        // Pythonプロセスを起動し、JSON文字列を引数として渡す
+        const pythonProcess = spawn('python3', [
+            './scripts/decide_effects.py',
+            jsonString
+        ]);
+
+        // 標準出力 (Python出力結果)
+        let pythonOutput = '';
+        pythonProcess.stdout.on('data', (data) => {
+            pythonOutput += data.toString();
+            console.log(`[Python DecideEffects STDOUT]: ${pythonOutput}`);
+        });
+
+        // 標準エラー (デバッグログ、エラーメッセージ)
+        let pythonErrorOutput = '';
+        pythonProcess.stderr.on('data', (data) => {
+            const output = data.toString();
+            pythonErrorOutput += output;
+            console.error(`[Python DecideEffects STDERR]: ${output.trim()}`);
+        });
+
+        // システムエラー (プロセス起動失敗など)
+        pythonProcess.on('error', (err) => {
+            console.error('decideEffects: Pythonプロセス起動エラー:', err);
+            reject(new Error(`decideEffects: Pythonプロセス起動に失敗。${err.message}`));
+        });
+
+        // 終了処理
+        pythonProcess.on('close', (code) => {
+            if (code === 0) {
+                // 正常終了
+                try {
+                    // Pythonから返されたJSON文字列をパース
+                    const result = JSON.parse(pythonOutput);
+                    console.log(`[Python DecideEffects STDOUT]: ${JSON.stringify(result)}`);
+                    resolve(result); // 処理結果を解決
+                } catch (e) {
+                    // JSONパースエラー
+                    console.error('decideEffects: JSONパースエラー:', e);
+                    console.error('Python Output:', pythonOutput);
+                    reject(new Error(`decideEffects: Pythonの出力解析に失敗しました。Error: ${pythonErrorOutput}`));
+                }
+            } else {
+                // 異常終了 (code != 0)
+                console.error(`decideEffects: Pythonプロセスがコード ${code} で終了しました。`);
+                reject(new Error(`decideEffects処理エラー: ${pythonErrorOutput}`));
+            }
+        });
+
     });
 }
 

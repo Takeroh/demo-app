@@ -62,7 +62,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="image-item">
                     <p><strong>撮影日時:</strong> ${date_time}</p>
                     <p><strong>撮影場所:</strong> ${location}</p>
-                    <img class="image" src="${imageData.filepath}" alt="写真 ${index + 1}">
+                    <div class="image-frame">
+                        <img class="image" src="${imageData.filepath}" alt="写真 ${index + 1}">
+                        <img class="stamp" src="${imageData.effects.stamp}" alt="スタンプ画像">
+                    </div>
+                    <audio controls src="${imageData.effects.sound}" type="audio/mp3">効果音</audio>
                     <p class="num">${index + 1} / ${sortedImageData.length}</p>
                 </div>
                 `

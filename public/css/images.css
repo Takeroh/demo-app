@@ -24,14 +24,29 @@
     margin: 0 auto 10px;
 }
 
-.image-item > .image{
+.image-item > .image-frame{
+    position: relative;
     width: 100%;
+}
+
+.image-frame > .image{
+    width: 100%;
+}
+
+.image-frame > .stamp{
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 50px;
+    opacity: 0.8;
 }
 
 .image-item > .num{
     margin-top: 10px;
     color: #fff;
 }
+
+
 
 #del-button{
     display: none;

@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     location += ` (<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank">地図で確認</a>)`;
                 }
 
-                imageItem = `
+                const imageItem = `
                 <div class="image-item">
                     <p><strong>撮影日時:</strong> ${date_time}</p>
                     <p><strong>撮影場所:</strong> ${location}</p>

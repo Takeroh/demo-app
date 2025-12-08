@@ -5,7 +5,9 @@ from fractions import Fraction
 from typing import Dict, Any, Optional, Tuple
 import json
 from PIL import Image, ExifTags
-
+#OpenCVのimportが必要
+#import cv2
+#import numpy as np
 # =================================================================
 # 1. Exifデータ取得関数
 # =================================================================
@@ -153,7 +155,36 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
             print(f"Extracted Metadata: {meta_data}", file=sys.stderr)
         
         # 2. 画像処理のロジックをここに記述
-        new_img = img # (仮) 入力画像をコピー
+        if img is None:
+            print("画像が見つかりません。test.jpg を同じフォルダに置いてください。")
+            exit()
+
+        # ---- 2. コントラスト強調（CLAHE：映える処理の定番） ----
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        l2 = clahe.apply(l)
+
+        lab2 = cv2.merge((l2, a, b))
+        img_clahe = cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
+
+        # ---- 3. 彩度アップ（映える色にする） ----
+        hsv = cv2.cvtColor(img_clahe, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
+
+        s = cv2.multiply(s, 1.2)   # 彩度を20%アップ
+        s = np.clip(s, 0, 255).astype(np.uint8)
+
+        hsv2 = cv2.merge((h, s, v))
+        img_vivid = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+
+        # ---- 4. 軽くシャープ処理 ----
+        kernel = np.array([[0, -1,  0],
+                        [-1,  5, -1],
+                        [0, -1,  0]])
+        img_sharp = cv2.filter2D(img_vivid, -1, kernel)
+        new_img = img_sharp # 一応コード書いたが、適切な映え写真はソースによって異なるので処理を変える可能性はある
 
         # 3. 処理後の画像を出力パスに保存する
         if meta_data['date_time']:

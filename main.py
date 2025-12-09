@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import sys
 import glob
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -53,7 +54,7 @@ def main():
     image_files = glob.glob(f"{IMAGE_FOLDER}/*.jpg") + glob.glob(f"{IMAGE_FOLDER}/*.png")
     
     if not image_files:
-        print("画像が見つかりません。")
+        print("画像が見つかりません。", file=sys.stderr)
         return
 
     # 結果を格納するリスト
@@ -70,16 +71,16 @@ def main():
         music_id = MUSIC_MAPPING.get(scenery, MUSIC_MAPPING["default"])
         stamp_id = STAMP_MAPPING.get(emotion, STAMP_MAPPING["default"])
 
-        #シンプルなデータ作成（位置情報などは含めない）
+        #データ作成
         record = {
-            "file_name": os.path.basename(img_path),
-            "analysis": {
-                "scenery": scenery,
-                "emotion": emotion
+            'filepath': img_path, 
+            'analysis': {
+                'scenery': scenery,
+                'emotion': emotion
             },
-            "assets_id": {
-                "music": music_id,
-                "stamp": stamp_id
+            'effects': {
+                'sound': f'/assets/sounds/{music_id}.mp3',
+                'stamp': f'/assets/stamps/{stamp_id}.png'
             }
         }
         results.append(record)
@@ -90,7 +91,7 @@ def main():
     with open(OUTPUT_FILE, "w", encoding='utf-8') as f:
         json.dump(final_output, f, indent=2, ensure_ascii=False)
         
-    print(f"\n{OUTPUT_FILE} を作成")
+    #print(f"\n{OUTPUT_FILE} を作成")
 
 if __name__ == "__main__":
     main()

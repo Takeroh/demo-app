@@ -1,14 +1,14 @@
 {
   "analyzed_data": [
     {
-      "file_name": "image.png",
+      "filepath": "images/image.png",
       "analysis": {
         "scenery": "nature_mountain",
         "emotion": "calm"
       },
-      "assets_id": {
-        "music": "music_nature_01",
-        "stamp": "stamp_coffee"
+      "effects": {
+        "sound": "/assets/sounds/bgm_hiking_acoustic.mp3",
+        "stamp": "/assets/stamps/stamp_tea_cup.png"
       }
     }
   ]

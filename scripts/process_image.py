@@ -148,9 +148,13 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
         meta_data = {}
         if exif:
             meta_data['date_time'] = get_datetime(exif)
-            meta_data['location'] = get_gps(exif)
-            # ログ出力 (Node.jsのstderrに出力される)
-            print(f"Extracted Metadata: {meta_data}", file=sys.stderr)
+            meta_data['location'] = get_gps(exif) 
+        else:
+            meta_data['date_time'] = get_datetime(exif)
+            meta_data['location'] = get_gps(exif)           
+            print("No Exif data found in image.", file=sys.stderr)
+        # ログ出力 (Node.jsのstderrに出力される)
+        print(f"Extracted Metadata: {meta_data}", file=sys.stderr)
         
         # 2. 画像処理のロジックをここに記述
         new_img = img # (仮) 入力画像をコピー

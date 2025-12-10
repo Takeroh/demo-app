@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Google Maps API が読み込まれているか確認
+    if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+        console.error("Google Maps API が読み込まれていません。APIキーを設定してください。");
+        const container = document.querySelector('#map');
+        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">Google Maps API キーが設定されていません</p>';
+        return;
+    }
+
     // 1. URLから現在のIDを取得 (例: results/?id=1700000000000)
     const urlParams = new URLSearchParams(window.location.search);
     const resultId = urlParams.get('id'); 
@@ -9,11 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 2. クエリパラメータ付きのURLを作成
-    const apiUrl = `/api/results?id=${resultId}`; // ⭐️ IDを直接URLに結合
-    
-    // または、URLSearchParamsを使う（特殊文字がある場合に安全）
-    // const params = new URLSearchParams({ id: resultId });
-    // const apiUrl = `/api/results?${params.toString()}`;
+    const apiUrl = `/api/results?id=${resultId}`;
 
     try {
         // 3. APIにアクセス
@@ -34,17 +38,178 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return 0; // 順序変更なし
             });
 
-            // 4. マップを画面に表示
-            const container = document.querySelector('#map');
-            const map = `<p>マップ</p>` // ここに地図埋め込みコードを追加（今はただの文字列）
-            container.insertAdjacentHTML('beforeend', map);
+            // 4. 有効な位置情報を持つ画像をフィルタリング
+            const validLocations = sortedImageData.filter(data => 
+                data.location && 
+                typeof data.location.latitude === 'number' && 
+                typeof data.location.longitude === 'number'
+            );
 
+            if (validLocations.length === 0) {
+                console.warn("位置情報が含まれた画像がありません。");
+                const container = document.querySelector('#map');
+                container.innerHTML = '<p style="text-align: center; padding: 20px; color: #999;">位置情報が利用できません</p>';
+                return;
+            }
+
+            // 5. Google Map を初期化
+            initializeMap(validLocations);
 
         } else {
             console.error("データ取得失敗:", resultData.error);
+            const container = document.querySelector('#map');
+            container.innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">データの取得に失敗しました</p>';
         }
 
     } catch (error) {
         console.error("通信エラー:", error);
+        const container = document.querySelector('#map');
+        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">通信エラーが発生しました</p>';
     }
 });
+
+/**
+ * Google Map を初期化し、マーカーと経路を表示
+ * @param {Array} locations - 位置情報を含む画像データの配列
+ */
+function initializeMap(locations) {
+    const container = document.querySelector('#map');
+    
+    // 中心座標を計算（最初の位置情報を使用）
+    const center = {
+        lat: locations[0].location.latitude,
+        lng: locations[0].location.longitude
+    };
+
+    // Google Map を作成
+    const map = new google.maps.Map(container, {
+        zoom: 13,
+        center: center,
+        mapTypeControl: true,
+        fullscreenControl: true,
+        zoomControl: true
+    });
+
+    // マーカーと経路のデータを準備
+    const markers = [];
+    const path = [];
+
+    // 各撮影地点にマーカーを配置
+    locations.forEach((data, index) => {
+        const position = {
+            lat: data.location.latitude,
+            lng: data.location.longitude
+        };
+
+        path.push(position);
+
+        // マーカーの色を決定（最初=緑、最後=赤、中間=黄）
+        let color = '#FFC837'; // デフォルトは黄
+        if (index === 0) {
+            color = '#34A853'; // 緑（開始地点）
+        } else if (index === locations.length - 1) {
+            color = '#EA4335'; // 赤（終了地点）
+        }
+
+        // SVGで番号付きのマーカーアイコンを動的生成（中央に番号を表示）
+        const iconUrl = generateNumberedMarkerDataUrl(index + 1, color);
+
+        const marker = new google.maps.Marker({
+            position: position,
+            map: map,
+            title: `撮影地点 ${index + 1}`,
+            icon: {
+                url: iconUrl,
+                scaledSize: new google.maps.Size(40, 40)
+            }
+        });
+
+        // マーカーのクリックイベント
+        marker.addListener('click', () => {
+            showInfoWindow(map, marker, data, index);
+        });
+
+        markers.push(marker);
+    });
+
+    // 撮影経路を描画（Polyline）
+    const polyline = new google.maps.Polyline({
+        path: path,
+        geodesic: true,
+        strokeColor: '#4285F4',
+        strokeOpacity: 0.7,
+        strokeWeight: 3,
+        map: map
+    });
+
+    // 地図の表示範囲を自動調整
+    const bounds = new google.maps.LatLngBounds();
+    path.forEach(pos => bounds.extend(pos));
+    map.fitBounds(bounds, 50);
+}
+
+/**
+ * マーカークリック時の情報ウィンドウを表示
+ * @param {google.maps.Map} map
+ * @param {google.maps.Marker} marker
+ * @param {Object} data - 画像データ
+ * @param {number} index - インデックス
+ */
+function showInfoWindow(map, marker, data, index) {
+    // 既存のInfoWindow があれば閉じる
+    if (window.currentInfoWindow) {
+        window.currentInfoWindow.close();
+    }
+
+    // 撮影日時をフォーマット
+    let dateStr = '日時不明';
+    if (data.date_time) {
+        const date = new Date(data.date_time);
+        dateStr = date.toLocaleString('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // 情報ウィンドウのコンテンツ
+    const content = `
+        <div class="map-info-window">
+            <p><strong>撮影地点 ${index + 1}</strong></p>
+            <p>日時: ${dateStr}</p>
+            <p>緯度: ${data.location.latitude.toFixed(5)}</p>
+            <p>経度: ${data.location.longitude.toFixed(5)}</p>
+        </div>
+    `;
+
+    const infoWindow = new google.maps.InfoWindow({
+        content: content
+    });
+
+    infoWindow.open(map, marker);
+    window.currentInfoWindow = infoWindow;
+}
+
+/**
+ * 指定した番号と色で円形SVGマーカーを生成し、data URL を返す
+ * @param {number} number
+ * @param {string} color - 背景色の16進カラー（例: '#34A853'）
+ * @returns {string} data:image/svg+xml;utf8,...
+ */
+function generateNumberedMarkerDataUrl(number, color) {
+        const size = 80; // SVGピクセルサイズ（高解像度でも綺麗に見える）
+        const radius = 30;
+        const text = String(number);
+        // テキスト色は背景に応じて白を使う（簡易判定）
+        const textColor = '#FFFFFF';
+
+        const svg = `<?xml version="1.0" encoding="UTF-8"?>
+        <svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 ${size} ${size}'>
+            <circle cx='${size/2}' cy='${size/2 - 4}' r='${radius}' fill='${color}' stroke='#ffffff' stroke-width='2'/>
+            <text x='50%' y='50%' dy='6' text-anchor='middle' fill='${textColor}' font-family='Arial, Helvetica, sans-serif' font-size='28' font-weight='700'>${text}</text>
+        </svg>`;
+
+        return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+}

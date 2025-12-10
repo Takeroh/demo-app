@@ -1,0 +1,23 @@
+{
+  "id": "1765379827249",
+  "timestamp": "2025-12-10T15:17:07.762Z",
+  "fileCount": 1,
+  "imageData": [
+    {
+      "date_time": "2025-05-29T20:54:32",
+      "location": {
+        "latitude": 35.675244444444445,
+        "longitude": 139.71668888888888
+      },
+      "filepath": "/results/images/1765379827249-250529205432.JPEG",
+      "analysis": {
+        "scenery": "",
+        "emotion": ""
+      },
+      "effects": {
+        "sound": "/assets/sounds/example.mp3",
+        "stamp": "/assets/stamps/heart.png"
+      }
+    }
+  ]
+}

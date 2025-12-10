@@ -149,11 +149,11 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
 
         meta_data = {}
         if exif:
-            meta_data['date_time'] = get_datetime(exif)
+            meta_data['date_time'] = get_datetime(exif) 
             meta_data['location'] = get_gps(exif) 
         else:
-            meta_data['date_time'] = get_datetime(exif)
-            meta_data['location'] = get_gps(exif)           
+            meta_data['date_time'] = None
+            meta_data['location'] = None         
             print("No Exif data found in image.", file=sys.stderr)
         # ログ出力 (Node.jsのstderrに出力される)
         print(f"Extracted Metadata: {meta_data}", file=sys.stderr)
@@ -163,8 +163,10 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
             print("画像が見つかりません。test.jpg を同じフォルダに置いてください。")
             exit()
 
+        img = img.convert("RGB")
+        img2 = np.array(img)    
         # ---- 2. コントラスト強調（CLAHE：映える処理の定番） ----
-        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        lab = cv2.cvtColor(img2, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
 
         clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
@@ -189,7 +191,8 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
                         [0, -1,  0]])
         img_sharp = cv2.filter2D(img_vivid, -1, kernel)
         new_img = img_sharp # 一応コード書いたが、適切な映え写真はソースによって異なるので処理を変える可能性はある
-
+        new_img_rgb = cv2.cvtColor(new_img, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(new_img_rgb)
         # 3. 処理後の画像を出力パスに保存する
         if meta_data['date_time']:
             time_prefix = datetime.fromisoformat(meta_data['date_time']).strftime('%y%m%d%H%M%S') # 日時をYYMMDDHHmmss形式にフォーマット (命名の基礎)
@@ -201,7 +204,7 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
         meta_data['filepath'] =  '/results/images/'+ final_filename
         output_path = os.path.join(output_dir, final_filename)
 
-        new_img.save(output_path)
+        pil_img.save(output_path)
         
         print(json.dumps(meta_data)) # Node.js側で受け取るためにメタデータを標準出力に出力
         print(f"Successfully processed image and saved to {output_path}", file=sys.stderr)

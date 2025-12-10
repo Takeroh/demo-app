@@ -2,4 +2,4 @@ Pillow
 openai
 python-dotenv
 numpy
-opencv-python==4.12.0.88
+opencv-python-headless

@@ -60,8 +60,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const imageItem = `
                 <div class="image-item">
-                    <p><strong>撮影日時:</strong> ${date_time}</p>
-                    <p><strong>撮影場所:</strong> ${location}</p>
+                    <p>撮影日時： ${date_time}</p>
+                    <p>撮影場所： ${location}</p>
+                    <p>推定場所： ${imageData.analysis.scenery}</p>
+                    <p>推定感情： ${imageData.analysis.emotion}</p>
                     <div class="image-frame">
                         <img class="image" src="${imageData.filepath}" alt="写真 ${index + 1}">
                         <img class="stamp" src="${imageData.effects.stamp}" alt="スタンプ画像">

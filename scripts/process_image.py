@@ -6,8 +6,8 @@ from typing import Dict, Any, Optional, Tuple
 import json
 from PIL import Image, ExifTags
 #OpenCVのimportが必要
-#import cv2
-#import numpy as np
+import cv2
+import numpy as np
 # =================================================================
 # 1. Exifデータ取得関数
 # =================================================================

@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 public/results/images/
 data/
+uploads/

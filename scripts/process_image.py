@@ -5,6 +5,8 @@ from fractions import Fraction
 from typing import Dict, Any, Optional, Tuple
 import json
 from PIL import Image, ExifTags
+import cv2
+import numpy as np
 
 # =================================================================
 # 1. Exifデータ取得関数
@@ -140,10 +142,10 @@ def rotate_image(img: Image.Image, exif_dict: Dict[int, Any]) -> Image.Image:
 def process_image(input_path: str, output_dir: str, result_id: str, original_name: str) -> None:
     try:
         # 1. 入力パスから画像を読み込む
-        img = Image.open(input_path)
+        img_pil = Image.open(input_path)
 
-        exif = get_exif(img)
-        img = rotate_image(img, exif)
+        exif = get_exif(img_pil)
+        img_pil = rotate_image(img_pil, exif)
 
         meta_data = {}
         if exif:
@@ -157,7 +159,44 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
         print(f"Extracted Metadata: {meta_data}", file=sys.stderr)
         
         # 2. 画像処理のロジックをここに記述
-        new_img = img # (仮) 入力画像をコピー
+        # ---- 2. コントラスト強調（CLAHE：映える処理の定番） ----
+
+        # 念のためRGBに統一（RGBAやLなどだと面倒なので）
+        img_pil = img_pil.convert("RGB")
+
+        # Pillow → NumPy配列（RGB）
+        img = np.array(img_pil)
+        # OpenCVはBGRなので、RGB → BGR に並び替え
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        l2 = clahe.apply(l)
+
+        lab2 = cv2.merge((l2, a, b))
+        img_clahe = cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
+
+        # ---- 3. 彩度アップ（映える色にする） ----
+        hsv = cv2.cvtColor(img_clahe, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
+
+        s = cv2.multiply(s, 1.2)   # 彩度を20%アップ
+        s = np.clip(s, 0, 255).astype(np.uint8)
+
+        hsv2 = cv2.merge((h, s, v))
+        img_vivid = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+
+        # ---- 4. 軽くシャープ処理 ----
+        kernel = np.array([[0, -1,  0],
+                        [-1,  5, -1],
+                        [0, -1,  0]])
+        img_sharp = cv2.filter2D(img_vivid, -1, kernel)
+        new_img = img_sharp # (仮) 入力画像をコピー
+        # BGR → RGB に直して Pillow に変換
+        img_rgb = cv2.cvtColor(img_sharp, cv2.COLOR_BGR2RGB)
+        new_img = Image.fromarray(img_rgb)  # ここでようやく Pillow.Image になる
 
         # 3. 処理後の画像を出力パスに保存する
         if meta_data['date_time']:

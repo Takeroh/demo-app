@@ -1,11 +1,48 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    // Google Maps API が読み込まれているか確認
-    if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
-        console.error("Google Maps API が読み込まれていません。APIキーを設定してください。");
-        const container = document.querySelector('#map');
-        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">Google Maps API キーが設定されていません</p>';
-        return;
+// ----------------------------------------------------
+//  起動ロジック 1: APIキーを取得し、Google Maps APIをロードする
+// ----------------------------------------------------
+async function loadGoogleMapsScript() {
+    try {
+        // 1. APIエンドポイントからキーを取得
+        const response = await fetch('/api/map-key');
+        const data = await response.json();
+        const apiKey = data.apiKey;
+
+        if (!apiKey) {
+            console.error("APIキーが取得できませんでした。");
+            document.querySelector('#map').innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">Google Maps API キーが設定されていません</p>';
+            return;
+        }
+
+        // 2. Google Maps APIをロードする <script> 要素を動的に作成
+        const script = document.createElement('script');
+        script.async = true;
+        script.defer = true;
+        // 取得したキーを使用し、コールバック関数 (initMap) を指定
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=startMapProcess`; 
+        // 既存のデータ取得と地図表示ロジックを 'startMapProcess' としてコールバックに指定
+
+        // 3. <head> に挿入し、ロードを開始
+        document.head.appendChild(script);
+
+    } catch (error) {
+        console.error("APIキーの取得またはスクリプトのロード中にエラーが発生しました:", error);
     }
+}
+
+// DOMContentLoaded イベントで API キーの取得を開始
+document.addEventListener('DOMContentLoaded', loadGoogleMapsScript);
+
+
+// ----------------------------------------------------
+//  起動ロジック 2: Google Maps APIのコールバック関数 
+// ----------------------------------------------------
+// 元の document.addEventListener のコールバックの中身をここに移す
+window.startMapProcess = async function() {
+    console.log("Google Maps APIが正常にロードされました。データ取得を開始します。");
+    
+    // 既存のコードはここから始まります
+    // ----------------------------------------------------
 
     // 1. URLから現在のIDを取得 (例: results/?id=1700000000000)
     const urlParams = new URLSearchParams(window.location.search);
@@ -66,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.querySelector('#map');
         container.innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">通信エラーが発生しました</p>';
     }
-});
+};
 
 /**
  * Google Map を初期化し、マーカーと経路を表示

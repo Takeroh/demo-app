@@ -152,8 +152,8 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
             meta_data['date_time'] = get_datetime(exif)
             meta_data['location'] = get_gps(exif) 
         else:
-            meta_data['date_time'] = get_datetime(exif)
-            meta_data['location'] = get_gps(exif)           
+            meta_data['date_time'] = None
+            meta_data['location'] = None
             print("No Exif data found in image.", file=sys.stderr)
         # ログ出力 (Node.jsのstderrに出力される)
         print(f"Extracted Metadata: {meta_data}", file=sys.stderr)

@@ -8,12 +8,17 @@ import fs from "fs";
 import multer from 'multer';
 import cors from 'cors';
 import { spawn } from 'child_process'
+import dotenv from 'dotenv';
+dotenv.config();
 
 // 環境設定
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Google Maps APIキーを取得
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 // ----------------------------------------
 // 2. 初期ミドルウェアと設定
@@ -105,7 +110,6 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
 
 
 // 処理結果JSONを動的に読み込んで返す
-// /api/results?id=1700000000000 の形式でアクセス
 app.get("/api/results", (req, res) => {
     const resultId = req.query.id; // URLのクエリパラメータからIDを取得
 
@@ -127,9 +131,14 @@ app.get("/api/results", (req, res) => {
     }
 });
 
-// index.js (ルーティング定義セクション)
+app.get('/api/map-key', (req, res) => {
+    res.json({ 
+            apiKey: GOOGLE_MAPS_API_KEY 
+        });
+});
 
 // ⭐️ 新しいAPIエンドポイント: 処理結果と関連するファイルを削除
+// /api/results?id=1700000000000 の形式でアクセス
 app.delete('/api/results/:id', (req, res) => {
     const resultId = req.params.id; // URLパスからIDを取得
     

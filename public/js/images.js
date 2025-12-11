@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const date = new Date(imageData.date_time);
                     date_time = date.toLocaleString('ja-JP', { 
                         year: 'numeric', month: '2-digit', day: '2-digit', 
-                        hour: '2-digit', minute: '2-digit', second: '2-digit' 
+                        hour: '2-digit', minute: '2-digit'
                     });
                 }
 
@@ -60,10 +60,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const imageItem = `
                 <div class="image-item">
-                    <p>撮影日時： ${date_time}</p>
-                    <p>撮影場所： ${location}</p>
-                    <p>推定場所： ${imageData.analysis.scenery}</p>
-                    <p>推定感情： ${imageData.analysis.emotion}</p>
+                    <p>${date_time}</p>
+                    <!-- <p>撮影場所： ${location}</p> -->
+                    <!-- <p>推定場所： ${imageData.analysis.scenery}</p> -->
+                    <!-- <p>推定感情： ${imageData.analysis.emotion}</p> -->
                     <div class="image-frame">
                         <img class="image" src="${imageData.filepath}" alt="写真 ${index + 1}">
                         <img class="stamp" src="${imageData.effects.stamp}" alt="スタンプ画像">

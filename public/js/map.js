@@ -85,7 +85,7 @@ window.startMapProcess = async function() {
             if (validLocations.length === 0) {
                 console.warn("位置情報が含まれた画像がありません。");
                 const container = document.querySelector('#map');
-                container.innerHTML = '<p style="text-align: center; padding: 20px; color: #999;">位置情報が利用できません</p>';
+                container.innerHTML = '<p class="error">位置情報が利用できません</p>';
                 return;
             }
 
@@ -95,13 +95,13 @@ window.startMapProcess = async function() {
         } else {
             console.error("データ取得失敗:", resultData.error);
             const container = document.querySelector('#map');
-            container.innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">データの取得に失敗しました</p>';
+            container.innerHTML = '<p class="error">データの取得に失敗しました</p>';
         }
 
     } catch (error) {
         console.error("通信エラー:", error);
         const container = document.querySelector('#map');
-        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #c00;">通信エラーが発生しました</p>';
+        container.innerHTML = '<p class="error">通信エラーが発生しました</p>';
     }
 };
 
@@ -110,7 +110,7 @@ window.startMapProcess = async function() {
  * @param {Array} locations - 位置情報を含む画像データの配列
  */
 function initializeMap(locations) {
-    const container = document.querySelector('#map');
+    const container = document.querySelector('#map-container');
     
     // 中心座標を計算（最初の位置情報を使用）
     const center = {
@@ -183,6 +183,20 @@ function initializeMap(locations) {
     const bounds = new google.maps.LatLngBounds();
     path.forEach(pos => bounds.extend(pos));
     map.fitBounds(bounds, 50);
+
+    // 地図表示と画像表示の切り替えボタンの設定
+    const toggleButton = document.querySelector('#toggle-button');
+    toggleButton.classList.add('visible');
+    toggleButton.addEventListener('click', () => {
+        container.classList.toggle('visible');
+        const imagesContainer = document.querySelector('#images');
+        imagesContainer.classList.toggle('visible');
+        if (container.classList.contains('visible')) {
+            toggleButton.textContent = 'スライドショーを表示';
+        } else {
+            toggleButton.textContent = '旅行経路を表示';
+        }
+    });
 }
 
 /**
@@ -214,10 +228,11 @@ function showInfoWindow(map, marker, data, index) {
     // 情報ウィンドウのコンテンツ
     const content = `
         <div class="map-info-window">
-            <p><strong>撮影地点 ${index + 1}</strong></p>
-            <p>日時: ${dateStr}</p>
-            <p>緯度: ${data.location.latitude.toFixed(5)}</p>
-            <p>経度: ${data.location.longitude.toFixed(5)}</p>
+            <!-- <p><strong>撮影地点 ${index + 1}</strong></p> -->
+            <p>${dateStr}</p>
+            <img src="${data.filepath}" alt="写真 ${index + 1}" style="width: 100%; height: auto; margin-top: 8px; border-radius: 4px;">
+            <!-- <p>緯度: ${data.location.latitude.toFixed(5)}</p> -->
+            <!-- <p>経度: ${data.location.longitude.toFixed(5)}</p> -->
         </div>
     `;
 

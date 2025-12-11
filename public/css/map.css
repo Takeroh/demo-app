@@ -1,5 +1,23 @@
-#map p{
+#map {
+    width: 100%;
+    height: 500px;
+    margin: 30px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#map p {
     margin: 0;
     color: #fff;
     font-size: 18px;
+}
+
+.map-info-window {
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+}
+
+.map-info-window p {
+    margin: 5px 0;
 }

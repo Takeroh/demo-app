@@ -1,12 +1,19 @@
 import sys
 import os
+import base64
 from datetime import datetime
 from fractions import Fraction
 from typing import Dict, Any, Optional, Tuple
-import json
 from PIL import Image, ExifTags
 import cv2
+import json
 import numpy as np
+from openai import OpenAI 
+from dotenv import load_dotenv
+
+# カレントディレクトリではなく、このスクリプトのある場所から一つ上の .env を確実に指定する
+env_path = os.path.join(os.path.dirname(__file__), '../.env')
+load_dotenv(env_path, override=True)
 
 # =================================================================
 # 1. Exifデータ取得関数
@@ -132,8 +139,199 @@ def rotate_image(img: Image.Image, exif_dict: Dict[int, Any]) -> Image.Image:
         img = img.transpose(Image.ROTATE_270)
     elif o == 8:
         img = img.transpose(Image.ROTATE_90)
-        
     return img
+
+def analyze_image_mood(img_path: str) -> str:
+    """
+    画像をGPT-4o-miniに送信し、最適なフィルターを決定する。
+    戻り値: 'vivid', 'sad', 'sketch' のいずれか
+    """
+    api_key = os.environ.get("OPENAI_API_KEY")
+    load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+    client = OpenAI(api_key=api_key)
+
+    # 画像をBase64エンコード
+    with open(img_path, "rb") as image_file:
+        base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini", # コストと速度重視でminiを使用
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text", 
+                            "text": (
+                                "Analyze this image and decide which filter style fits best.\n"
+                                "1. 'vivid': For landscapes, food, or happy scenes (enhance color/contrast).\n"
+                                "2. 'sad': For rainy, dark, or melancholic scenes (desaturate, cool tone).\n"
+                                "3. 'sketch': For architectural, structural, or high-contrast lines (pencil style).\n"
+                                "Return ONLY the keyword: 'vivid', 'sad', or 'sketch'."
+                            )
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=10
+        )
+        decision = response.choices[0].message.content.strip(" '\"").lower()
+        
+        # 想定外の回答が来た場合のガード
+        if decision not in ['vivid', 'sad', 'sketch']:
+            print(f"GPT returned unexpected value: {decision}. Fallback to 'vivid'.", file=sys.stderr)
+            return "vivid"
+            
+        return decision
+
+    except Exception as e:
+        print(f"GPT API Error: {e}. Fallback to 'vivid'.", file=sys.stderr)
+        return "vivid"
+# =================================================================
+# 5.画像処理関数
+# =================================================================
+#1.映えの処理
+def enhance_image(
+    img_pil: Image.Image,
+    clahe_clip: float = 2.0,        # コントラスト強調の強さ（小さいほど自然）
+    saturation_scale: float = 1.2,  # 彩度アップ倍率（1.0〜1.15が自然）
+    sharp_amount: float = 0.3        # シャープの強さ（0〜0.5が推奨）
+) -> Image.Image:
+    """
+    Pillow Image を受け取り、
+    - CLAHE（マイルド）
+    - 彩度アップ（控えめ）
+    - アンシャープマスク（軽め）
+    を適用して、自然に映える画像を返す関数。
+    """
+
+    # RGB 変換（Pillow → NumPy）
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # ---- 1. コントラスト強調（CLAHE） ----
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    clahe = cv2.createCLAHE(clipLimit=clahe_clip, tileGridSize=(8, 8))
+    l2 = clahe.apply(l)
+
+    lab2 = cv2.merge((l2, a, b))
+    img_clahe = cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
+
+    # ---- 2. 彩度アップ（控えめ） ----
+    hsv = cv2.cvtColor(img_clahe, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    s = cv2.multiply(s, saturation_scale)
+    s = np.clip(s, 0, 255).astype(np.uint8)
+
+    hsv2 = cv2.merge((h, s, v))
+    img_vivid = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+
+    # ---- 3. 軽いシャープ処理（アンシャープマスク） ----
+    if sharp_amount > 0:
+        blur = cv2.GaussianBlur(img_vivid, (0, 0), sigmaX=1.0)
+        img_sharp = cv2.addWeighted(
+            img_vivid, 1.0 + sharp_amount,
+            blur,      -sharp_amount,
+            0
+        )
+    else:
+        img_sharp = img_vivid
+
+    # BGR → RGB → Pillow Image に戻す
+    img_rgb = cv2.cvtColor(img_sharp, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(img_rgb)
+
+#sad関数
+
+def sad_filter(img_pil: Image.Image, mood: float = 0.6) -> Image.Image:
+    """
+    しんみりした雰囲気を少しだけ足すフィルター。
+    mood: 0.0（効果なし）〜 1.0（最大でもそこまでキツくない）
+    """
+
+    # mood を 0〜1 にクリップ
+    mood = max(0.0, min(1.0, mood))
+
+    # mood から内部パラメータを決める（値はかなり控えめ）
+    sat_scale     = 1.0 - 0.35 * mood   # 彩度 ↓
+    bright_scale  = 1.0 - 0.08 * mood   # 明るさ ↓
+    cool_strength = 0.12 * mood         # ほんのり寒色寄りに
+
+    # Pillow → BGR(OpenCV)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # ---- 1. HSV で彩度と明るさだけいじる ----
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    s = (s.astype(np.float32) * sat_scale)
+    v = (v.astype(np.float32) * bright_scale)
+
+    s = np.clip(s, 0, 255).astype(np.uint8)
+    v = np.clip(v, 0, 255).astype(np.uint8)
+
+    hsv2 = cv2.merge((h, s, v))
+    img_toned = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+
+    # ---- 2. ほんの少しだけ寒色寄りに（スケールで調整）----
+    img_f = img_toned.astype(np.float32)
+    # B（青）を少しだけ増やし、R（赤）を少しだけ減らす
+    img_f[:, :, 0] *= (1.0 + cool_strength)   # B
+    img_f[:, :, 2] *= (1.0 - cool_strength)   # R
+
+    img_f = np.clip(img_f, 0, 255).astype(np.uint8)
+
+    # BGR → Pillow
+    img_rgb = cv2.cvtColor(img_f, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(img_rgb)
+
+#鉛筆
+def pencil_sketch_filter(img_pil: Image.Image, mood: float=0.5) -> Image.Image:
+    """
+    OpenCV の pencilSketch を使った鉛筆画フィルター。
+    mood: 0.0（効果なし）〜 1.0（控えめ〜標準の鉛筆画）
+    """
+
+    # mood を 0〜1 に制限
+    mood = max(0.0, min(1.0, mood))
+
+    # pencilSketch 用の軽めパラメータを生成
+    sigma_s = 30 + 70 * mood       # 空間スケール（大きいとより鉛筆画ぽい）
+    sigma_r = 0.05 + 0.15 * mood   # 反射率（小さい方が線が細く繊細）
+    shade   = 0.03 + 0.07 * mood   # 影の濃さ（控えめ～標準）
+
+    # Pillow → BGR(OpenCV)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # pencilSketch（gray, color を返す）
+    dst_gray, dst_color = cv2.pencilSketch(
+        img,
+        sigma_s=sigma_s,
+        sigma_r=sigma_r,
+        shade_factor=shade
+    )
+
+    # 今回は「控えめなグレー鉛筆画」のほうを使う
+    sketch = dst_gray
+
+    # グレー → RGB → Pillow
+    sketch_rgb = cv2.cvtColor(sketch, cv2.COLOR_GRAY2RGB)
+    return Image.fromarray(sketch_rgb)
 
 # =================================================================
 # メイン処理関数
@@ -152,51 +350,29 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
             meta_data['date_time'] = get_datetime(exif)
             meta_data['location'] = get_gps(exif) 
         else:
-            meta_data['date_time'] = None
-            meta_data['location'] = None
+            meta_data['date_time'] = get_datetime(exif)
+            meta_data['location'] = get_gps(exif)           
             print("No Exif data found in image.", file=sys.stderr)
         # ログ出力 (Node.jsのstderrに出力される)
         print(f"Extracted Metadata: {meta_data}", file=sys.stderr)
         
-        # 2. 画像処理のロジックをここに記述
-        # ---- 2. コントラスト強調（CLAHE：映える処理の定番） ----
+        # 2. GPTによるスタイル判定 (API Call)
+        print("Consulting GPT-4o for image style...", file=sys.stderr)
+        style = analyze_image_mood(input_path)
+        print(f"GPT Decision: {style}", file=sys.stderr)
+        
+        # メタデータに決定したスタイルも含める（フロントエンドで表示したければ）
+        meta_data['style'] = style
 
-        # 念のためRGBに統一（RGBAやLなどだと面倒なので）
-        img_pil = img_pil.convert("RGB")
-
-        # Pillow → NumPy配列（RGB）
-        img = np.array(img_pil)
-        # OpenCVはBGRなので、RGB → BGR に並び替え
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
-        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-        l2 = clahe.apply(l)
-
-        lab2 = cv2.merge((l2, a, b))
-        img_clahe = cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
-
-        # ---- 3. 彩度アップ（映える色にする） ----
-        hsv = cv2.cvtColor(img_clahe, cv2.COLOR_BGR2HSV)
-        h, s, v = cv2.split(hsv)
-
-        s = cv2.multiply(s, 1.2)   # 彩度を20%アップ
-        s = np.clip(s, 0, 255).astype(np.uint8)
-
-        hsv2 = cv2.merge((h, s, v))
-        img_vivid = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
-
-        # ---- 4. 軽くシャープ処理 ----
-        kernel = np.array([[0, -1,  0],
-                        [-1,  5, -1],
-                        [0, -1,  0]])
-        img_sharp = cv2.filter2D(img_vivid, -1, kernel)
-        new_img = img_sharp # (仮) 入力画像をコピー
-        # BGR → RGB に直して Pillow に変換
-        img_rgb = cv2.cvtColor(img_sharp, cv2.COLOR_BGR2RGB)
-        new_img = Image.fromarray(img_rgb)  # ここでようやく Pillow.Image になる
+        # 3. 判定結果に基づき画像処理を実行
+        if style == "vivid":
+            new_img = enhance_image(img_pil)
+        elif style == "sad":
+            new_img = sad_filter(img_pil)
+        elif style == "sketch":
+            new_img = pencil_sketch_filter(img_pil)
+        else:
+            new_img = enhance_image(img_pil) # Default
 
         # 3. 処理後の画像を出力パスに保存する
         if meta_data['date_time']:

@@ -7,7 +7,8 @@
     <meta name="description" content="あの旅行を、もう一度。Re:Tripは大切な旅行の思い出を振り返るサービスです。あなたも旅路をたどってあのときの気持ちを思い出しませんか？">
 
     <link href="/css/common.css" rel="stylesheet" type="text/css">
-    <link href="/css/top.css" rel="stylesheet" type="text/css">
+    <link href="/css/images.css" rel="stylesheet" type="text/css">
+    <link href="/css/map.css" rel="stylesheet" type="text/css">
     
     <meta property="og:title" content="Re:Trip">
     <meta property="og:description" content="あの旅行を、もう一度。Re:Tripは大切な旅行の思い出を振り返るサービスです。あなたも旅路をたどってあのときの気持ちを思い出しませんか？">
@@ -16,20 +17,14 @@
 
   <body>
     <img src="/images/ReTrip.png" alt="Re:Trip" class="title">
-    <p class="catch-copy">That Trip, Once More.</p>
-    <div class="back-wrapper">
-      <form id="upload-form">
-          <h2>写真のアップロード</h2>
-          <input type="file" id="photo-files" name="photos" accept="image/*" multiple required style="display: none;">
-          <button id="file-select" type="button">写真を選択</button>
-          <p class="file-status-text">選択されていません</p>
-          <button type="submit" id="submit-button">選択した写真をアップロード</button>
-      </form>
-
-      <p id="status-message"></p>
+    <div id="images" class="visible"></div>
+    <div id="map">
+      <div id="map-container"></div>
     </div>
+    <button id="toggle-button">旅行経路を表示</button>
+    <button id="del-button">リセット</button>
 
-
-    <script src="/js/upload.js"></script>
+    <script src="/js/images.js"></script>
+    <script src="/js/map.js"></script>
   </body>
 </html>

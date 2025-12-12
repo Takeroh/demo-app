@@ -1,0 +1,71 @@
+.title{
+    width: 150px;
+    display: block;
+    margin: 10px auto 0 auto;
+}
+
+#images{
+    display: none;
+}
+
+#images.visible{
+    display: block;
+    scroll-snap-type: x mandatory;
+    width: 80%;
+    margin: 20px auto;
+    overflow-x: scroll;
+    display: flex;
+    -webkit-overflow-scrolling: touch; /* スマホ対応のため必須 */
+    overflow-scrolling: touch; /* スマホ対応のため必須 */
+}
+#images > .image-item{
+    scroll-snap-align: center;
+    height: 100%;
+    width: 100%;
+    flex: none;
+}
+
+.image-item > p{
+    margin: 0 auto 10px;
+}
+
+.image-item > .image-frame{
+    position: relative;
+    width: 100%;
+}
+
+.image-frame > .image{
+    width: 100%;
+}
+
+.image-frame > .stamp{
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 50px;
+    opacity: 0.8;
+}
+
+.image-item > .num{
+    margin-top: 10px;
+    color: #fff;
+}
+
+
+
+#del-button{
+    display: none;
+}
+
+#del-button.visible{
+    display: block;
+    margin: 10px auto;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: var(--color-orange);
+    color: #fff;
+    font-weight: 800;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}

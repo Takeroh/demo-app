@@ -20,6 +20,7 @@ def encode_image(image_path):
 def analyze_image(image_path):
     print(f"GPT Analyzing: {image_path}", file=sys.stderr)
     base64_image = encode_image(image_path)
+    # base64_image = convert_to_base64_uri(image_path)
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -34,12 +35,12 @@ def decide_effects(json_str: str):
     try:
         # 1. Node.jsから渡されたJSON文字列をパース
         data = json.loads(json_str)
-        raw_path = data['filepath']
-        if raw_path.startswith("/"):
-            # 先頭の / を取って public と結合する
-            file_system_path = os.path.join("public", raw_path.lstrip("/"))
-        else:
-            file_system_path = os.path.join("public", raw_path)
+        file_system_path = data['temp_path']
+        # if raw_path.startswith("/"):
+        #     # 先頭の / を取って public と結合する
+        #     file_system_path = os.path.join("public", raw_path.lstrip("/"))
+        # else:
+        #     file_system_path = os.path.join("public", raw_path)
             
         print(f"Reading file from: {file_system_path}", file=sys.stderr)
         
@@ -61,7 +62,7 @@ def decide_effects(json_str: str):
             
         # 3. 結果をJSONとして構築
         result = {
-            'filepath': raw_path,
+            # 'filepath': file_system_path,
             'analysis':{
                 'scenery': scenery,
                 'emotion': emotion

@@ -345,7 +345,9 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
         exif = get_exif(img_pil)
         img_pil = rotate_image(img_pil, exif)
 
-        meta_data = {}
+        meta_data = {
+            'temp_path': input_path
+        }
         if exif:
             meta_data['date_time'] = get_datetime(exif)
             meta_data['location'] = get_gps(exif) 

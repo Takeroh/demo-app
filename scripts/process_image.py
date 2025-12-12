@@ -134,6 +134,144 @@ def rotate_image(img: Image.Image, exif_dict: Dict[int, Any]) -> Image.Image:
         img = img.transpose(Image.ROTATE_90)
         
     return img
+# =================================================================
+# 5.画像処理関数
+# =================================================================
+#1.映えの処理
+def enhance_image(
+    img_pil: Image.Image,
+    clahe_clip: float ,        # コントラスト強調の強さ（小さいほど自然）
+    saturation_scale: float ,  # 彩度アップ倍率（1.0〜1.15が自然）
+    sharp_amount: float        # シャープの強さ（0〜0.5が推奨）
+) -> Image.Image:
+    """
+    Pillow Image を受け取り、
+    - CLAHE（マイルド）
+    - 彩度アップ（控えめ）
+    - アンシャープマスク（軽め）
+    を適用して、自然に映える画像を返す関数。
+    """
+
+    # RGB 変換（Pillow → NumPy）
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # ---- 1. コントラスト強調（CLAHE） ----
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    clahe = cv2.createCLAHE(clipLimit=clahe_clip, tileGridSize=(8, 8))
+    l2 = clahe.apply(l)
+
+    lab2 = cv2.merge((l2, a, b))
+    img_clahe = cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
+
+    # ---- 2. 彩度アップ（控えめ） ----
+    hsv = cv2.cvtColor(img_clahe, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    s = cv2.multiply(s, saturation_scale)
+    s = np.clip(s, 0, 255).astype(np.uint8)
+
+    hsv2 = cv2.merge((h, s, v))
+    img_vivid = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+
+    # ---- 3. 軽いシャープ処理（アンシャープマスク） ----
+    if sharp_amount > 0:
+        blur = cv2.GaussianBlur(img_vivid, (0, 0), sigmaX=1.0)
+        img_sharp = cv2.addWeighted(
+            img_vivid, 1.0 + sharp_amount,
+            blur,      -sharp_amount,
+            0
+        )
+    else:
+        img_sharp = img_vivid
+
+    # BGR → RGB → Pillow Image に戻す
+    img_rgb = cv2.cvtColor(img_sharp, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(img_rgb)
+
+#sad関数
+
+def sad_filter(img_pil: Image.Image, mood: float) -> Image.Image:
+    """
+    しんみりした雰囲気を少しだけ足すフィルター。
+    mood: 0.0（効果なし）〜 1.0（最大でもそこまでキツくない）
+    """
+
+    # mood を 0〜1 にクリップ
+    mood = max(0.0, min(1.0, mood))
+
+    # mood から内部パラメータを決める（値はかなり控えめ）
+    sat_scale     = 1.0 - 0.35 * mood   # 彩度 ↓
+    bright_scale  = 1.0 - 0.08 * mood   # 明るさ ↓
+    cool_strength = 0.12 * mood         # ほんのり寒色寄りに
+
+    # Pillow → BGR(OpenCV)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # ---- 1. HSV で彩度と明るさだけいじる ----
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    s = (s.astype(np.float32) * sat_scale)
+    v = (v.astype(np.float32) * bright_scale)
+
+    s = np.clip(s, 0, 255).astype(np.uint8)
+    v = np.clip(v, 0, 255).astype(np.uint8)
+
+    hsv2 = cv2.merge((h, s, v))
+    img_toned = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+
+    # ---- 2. ほんの少しだけ寒色寄りに（スケールで調整）----
+    img_f = img_toned.astype(np.float32)
+    # B（青）を少しだけ増やし、R（赤）を少しだけ減らす
+    img_f[:, :, 0] *= (1.0 + cool_strength)   # B
+    img_f[:, :, 2] *= (1.0 - cool_strength)   # R
+
+    img_f = np.clip(img_f, 0, 255).astype(np.uint8)
+
+    # BGR → Pillow
+    img_rgb = cv2.cvtColor(img_f, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(img_rgb)
+
+#鉛筆
+def pencil_sketch_filter(img_pil: Image.Image, mood: float) -> Image.Image:
+    """
+    OpenCV の pencilSketch を使った鉛筆画フィルター。
+    mood: 0.0（効果なし）〜 1.0（控えめ〜標準の鉛筆画）
+    """
+
+    # mood を 0〜1 に制限
+    mood = max(0.0, min(1.0, mood))
+
+    # pencilSketch 用の軽めパラメータを生成
+    sigma_s = 30 + 70 * mood       # 空間スケール（大きいとより鉛筆画ぽい）
+    sigma_r = 0.05 + 0.15 * mood   # 反射率（小さい方が線が細く繊細）
+    shade   = 0.03 + 0.07 * mood   # 影の濃さ（控えめ～標準）
+
+    # Pillow → BGR(OpenCV)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # pencilSketch（gray, color を返す）
+    dst_gray, dst_color = cv2.pencilSketch(
+        img,
+        sigma_s=sigma_s,
+        sigma_r=sigma_r,
+        shade_factor=shade
+    )
+
+    # 今回は「控えめなグレー鉛筆画」のほうを使う
+    sketch = dst_gray
+
+    # グレー → RGB → Pillow
+    sketch_rgb = cv2.cvtColor(sketch, cv2.COLOR_GRAY2RGB)
+    return Image.fromarray(sketch_rgb)
 
 # =================================================================
 # メイン処理関数
@@ -159,44 +297,21 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
         print(f"Extracted Metadata: {meta_data}", file=sys.stderr)
         
         # 2. 画像処理のロジックをここに記述
-        # ---- 2. コントラスト強調（CLAHE：映える処理の定番） ----
+        # ---- 関数化-------
+        #new_img = enhance_image(
+        #img_pil,
+        #clahe_clip=0.68,#コントラスト強調で1以上。大きくするとよりコントラスト強調する
+        #saturation_scale=0.6,#彩度を定数倍
+        #sharp_amount=0.10#輪郭強調。0だと何も処理をせず、大きくするとより強調される。
+        #)
 
-        # 念のためRGBに統一（RGBAやLなどだと面倒なので）
-        img_pil = img_pil.convert("RGB")
 
-        # Pillow → NumPy配列（RGB）
-        img = np.array(img_pil)
-        # OpenCVはBGRなので、RGB → BGR に並び替え
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        # 少しだけしんみり（弱め）
+        #new_img = sad_filter(img_pil, mood=0.6)
 
-        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-        l2 = clahe.apply(l)
-
-        lab2 = cv2.merge((l2, a, b))
-        img_clahe = cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
-
-        # ---- 3. 彩度アップ（映える色にする） ----
-        hsv = cv2.cvtColor(img_clahe, cv2.COLOR_BGR2HSV)
-        h, s, v = cv2.split(hsv)
-
-        s = cv2.multiply(s, 1.2)   # 彩度を20%アップ
-        s = np.clip(s, 0, 255).astype(np.uint8)
-
-        hsv2 = cv2.merge((h, s, v))
-        img_vivid = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
-
-        # ---- 4. 軽くシャープ処理 ----
-        kernel = np.array([[0, -1,  0],
-                        [-1,  5, -1],
-                        [0, -1,  0]])
-        img_sharp = cv2.filter2D(img_vivid, -1, kernel)
-        new_img = img_sharp # (仮) 入力画像をコピー
-        # BGR → RGB に直して Pillow に変換
-        img_rgb = cv2.cvtColor(img_sharp, cv2.COLOR_BGR2RGB)
-        new_img = Image.fromarray(img_rgb)  # ここでようやく Pillow.Image になる
+        #鉛筆画風？
+        # 標準的な鉛筆画
+        new_img = pencil_sketch_filter(img_pil, mood=0.4)
 
         # 3. 処理後の画像を出力パスに保存する
         if meta_data['date_time']:

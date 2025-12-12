@@ -57,11 +57,14 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
     // 処理IDを生成 (タイムスタンプを使用)
     const resultId = Date.now().toString();
 
+    const resultsImageUrls = [];
+
     // 複数ファイルを処理するためのPromiseの配列を作成
     const processingPromises = req.files.map(async file => {
         
         // 1. 画像処理とメタデータ抽出を実行
         const processedResult = await processImage(file, path, __dirname); // { filepath, date_time, location } 
+        resultsImageUrls.push(path.join('public', processedResult.filepath));
 
         // 2. 取得した画像データを使って効果音・スタンプを決定
         // metadataをJSON文字列に変換してPythonに渡す
@@ -85,8 +88,17 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
             fileCount: results.length,
             imageData: results.map(r => r)
         };
-        
 
+        // uploads/ のファイルを削除
+        // results.forEach(result => {
+        //     cleanupSingleFile(result.temp_path); 
+        // });
+        if (req.files) {
+            req.files.forEach(file => {
+                cleanupSingleFile(file.path); 
+            });
+        }
+        
         // ⭐️ 動的JSONファイルを保存 (例: data/1700000000000.json)
         const jsonFilePath = path.join(JSON_DIR, `${resultId}.json`);
         fs.writeFileSync(jsonFilePath, JSON.stringify(resultData, null, 2));
@@ -100,8 +112,18 @@ app.post('/api/upload', upload.array('photos', 10), async (req, res) => {
         });
 
     } catch (error) {
-        // ... (エラー処理はそのまま) ...
+        // uploads/ のファイルを削除
         console.error('画像処理中に全体エラーが発生:', error);
+        if (req.files) {
+            req.files.forEach(file => {
+                cleanupSingleFile(file.path); 
+            });
+        }
+        
+        // 失敗したファイルのパスを収集して削除
+        const cleanupPromises = resultsImageUrls.map(filePath => cleanupSingleFile(filePath));
+        await Promise.allSettled(cleanupPromises); // 失敗しても全体の処理を止めない
+        
         res.status(500).json({ error: `画像処理中にエラーが発生しました。詳細はログを確認してください。` });
     } finally {
         // ... (finally ブロックはそのまま) ...
@@ -245,7 +267,7 @@ function processImage(file, pathModule, dirname) {
 
         // 終了処理
         pythonProcess.on('close', (code) => {
-            cleanupSingleFile(tempFilePath); 
+            // cleanupSingleFile(tempFilePath);
 
             if (code !== 0) {
                 // 処理失敗
@@ -276,18 +298,6 @@ function processImage(file, pathModule, dirname) {
             }
 
         });
-    });
-}
-
-// 単一ファイルを削除する関数
-function cleanupSingleFile(filePath) {
-    fs.unlink(filePath, (err) => {
-        if (err) {
-            // ログに残すが、アプリケーションのクラッシュは避ける
-            console.error(`一時ファイル削除失敗: ${filePath}`, err);
-        } else {
-            console.log(`一時ファイル ${filePath} を削除しました。`);
-        }
     });
 }
 
@@ -346,6 +356,27 @@ function decideEffects(imageData) {
             }
         });
 
+    });
+}
+
+// 単一ファイルを削除する関数
+function cleanupSingleFile(filePath) {
+    // 引数チェックを追加
+    if (!filePath || typeof filePath !== 'string') {
+        console.warn('cleanupSingleFile: 有効なパスが指定されなかったためスキップしました。');
+        return;
+    }
+
+    fs.unlink(filePath, (err) => {
+        if (err) {
+            if (err.code === 'ENOENT') {
+                console.log(`ファイルが存在しないため削除をスキップしました: ${filePath}`);
+            } else {
+                console.error(`ファイル削除失敗: ${filePath}`, err);
+            }
+        } else {
+            console.log(`ファイルを削除しました: ${filePath}`);
+        }
     });
 }
 

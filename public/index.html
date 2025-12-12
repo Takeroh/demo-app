@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?">
+    <title>Re:Trip</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="あの旅行を、もう一度。Re:Tripは大切な旅行の思い出を振り返るサービスです。あなたも旅路をたどってあのときの気持ちを思い出しませんか？">
+
+    <link href="/css/common.css" rel="stylesheet" type="text/css">
+    <link href="/css/top.css" rel="stylesheet" type="text/css">
+    
+    <meta property="og:title" content="Re:Trip">
+    <meta property="og:description" content="あの旅行を、もう一度。Re:Tripは大切な旅行の思い出を振り返るサービスです。あなたも旅路をたどってあのときの気持ちを思い出しませんか？">
+    <meta property="og:image" content="/images/sunlight.jpg">
+  </head>
+
+  <body>
+    <img src="/images/ReTrip.png" alt="Re:Trip" class="title">
+    <p class="catch-copy">That Trip, Once More.</p>
+    <div class="back-wrapper">
+      <form id="upload-form">
+          <h2>写真のアップロード</h2>
+          <input type="file" id="photo-files" name="photos" accept="image/*" multiple required style="display: none;">
+          <button id="file-select" type="button">写真を選択</button>
+          <p class="file-status-text">選択されていません</p>
+          <button type="submit" id="submit-button">選択した写真をアップロード</button>
+      </form>
+
+      <p id="status-message"></p>
+    </div>
+
+
+    <script src="/js/upload.js"></script>
+  </body>
+</html>

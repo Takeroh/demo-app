@@ -46,12 +46,148 @@
     opacity: 0.8;
     animation: stamp-blink 2s step-start infinite;
 }
-/* 点滅用のキーフレーム */
-@keyframes stamp-blink {
-    0%   { opacity: 1; }
-    50%  { opacity: 0; }
-    100% { opacity: 1; }
+/* =========================
+   基本アニメーションたち
+   ========================= */
+
+/* ぴょんっと跳ねる（楽しい・テンション高い） */
+@keyframes stamp-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
 }
+
+/* ふわふわ上下（リラックス・穏やか） */
+@keyframes stamp-float {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
+/* ぶるぶる震える（驚き・焦り・緊急） */
+@keyframes stamp-shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-3px); }
+  40%  { transform: translateX(3px); }
+  60%  { transform: translateX(-2px); }
+  80%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
+/* ドクンドクン（好き・ロマンチック・キュン） */
+@keyframes stamp-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+/* ちょいナナメにユラユラ（思索・エモい・考えごと） */
+@keyframes stamp-tilt {
+  0%   { transform: rotate(-4deg); }
+  50%  { transform: rotate(4deg); }
+  100% { transform: rotate(-4deg); }
+}
+
+/* 光ってる感（ひらめき・晴れ・ラッキー） */
+@keyframes stamp-glow {
+  0%,100% { box-shadow: 0 0 0px rgba(255,255,255,0); }
+  50%     { box-shadow: 0 0 15px rgba(255,255,255,0.9); }
+}
+
+/* 少し斜めにスーッと移動（旅・動きのあるシーン） */
+@keyframes stamp-drift {
+  0%   { transform: translate(0, 0); }
+  50%  { transform: translate(6px, -6px); }
+  100% { transform: translate(0, 0); }
+}
+
+
+.stamp.emotion-joy,
+.stamp.emotion-excitement,
+.stamp.emotion-laughter,
+.stamp.emotion-cheers,
+.stamp.emotion-cool,
+.stamp.emotion-music,
+.stamp.emotion-sports,
+.stamp.emotion-gaming {
+  animation: stamp-bounce 0.9s ease-in-out infinite;
+}
+
+.stamp.emotion-peaceful,
+.stamp.emotion-relaxed,
+.stamp.emotion-traditional_japan,
+.stamp.emotion-nature,
+.stamp.emotion-beach,
+.stamp.emotion-park,
+.stamp.emotion-morning,
+.stamp.emotion-night,
+.stamp.emotion-health {
+  animation: stamp-float 2.4s ease-in-out infinite;
+}
+.stamp.emotion-contemplative,
+.stamp.emotion-nostalgic,
+.stamp.emotion-working,
+.stamp.emotion-studying,
+.stamp.emotion-photography,
+.stamp.emotion-art,
+.stamp.emotion-museum,
+.stamp.emotion-historic,
+.stamp.emotion-confused,
+.stamp.emotion-agreement {
+  animation: stamp-tilt 1.6s ease-in-out infinite;
+}
+
+.stamp.emotion-romantic,
+.stamp.emotion-love,
+.stamp.emotion-shy,
+.stamp.emotion-gratitude {
+  animation: stamp-pulse 1.5s ease-in-out infinite;
+}
+
+.stamp.emotion-sadness,
+.stamp.emotion-tired,
+.stamp.emotion-rainy,
+.stamp.emotion-cloudy {
+  /* 既存の stamp-blink を再利用 */
+  animation: stamp-blink 2.2s ease-in-out infinite;
+}
+.stamp.emotion-surprise,
+.stamp.emotion-shock,
+.stamp.emotion-anger,
+.stamp.emotion-urgent,
+.stamp.emotion-refusal {
+  animation: stamp-shake 0.45s linear infinite;
+}
+
+.stamp.emotion-traveling,
+.stamp.emotion-driving,
+.stamp.emotion-train_trip,
+.stamp.emotion-walking,
+.stamp.emotion-sightseeing,
+.stamp.emotion-modern_city,
+.stamp.emotion-amusement_park,
+.stamp.emotion-zoo,
+.stamp.emotion-pet,
+.stamp.emotion-carnivore,
+.stamp.emotion-herbivores,
+.stamp.emotion-fish,
+.stamp.emotion-insect,
+.stamp.emotion-sunny,
+.stamp.emotion-snowy {
+  animation: stamp-drift 3s ease-in-out infinite;
+}
+.stamp.emotion-idea,
+.stamp.emotion-lucky,
+.stamp.emotion-money,
+.stamp.emotion-shopping {
+  animation: stamp-glow 2s ease-in-out infinite;
+  border-radius: 50%; /* 光を丸く見せたいとき */
+}
+/* おいしい → テンション高めの鼓動 */
+.stamp.emotion-delicious {
+  animation: stamp-pulse 1.2s ease-in-out infinite;
+}
+
+/* ===== 追加ここまで ===== */
+
 
 .image-item > .num{
     margin-top: 10px;

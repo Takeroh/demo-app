@@ -228,7 +228,12 @@ STAMP_MAPPING = {
     "health":             "stamp_pill_medical",   # 健康/薬
 }
 
-
+# ラベルの定義はそのまま
+EMOTION_LABELS = list(STAMP_MAPPING.keys())
+# defaultキーはGPTへの選択肢には含めないように除外する
+if "default" in EMOTION_LABELS:
+    EMOTION_LABELS.remove("default")
+EMOTION_LABELS_STR = ", ".join(EMOTION_LABELS)
 
 
 

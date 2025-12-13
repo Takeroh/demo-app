@@ -63,3 +63,56 @@ p{
     color: var(--color-navy);
     margin: 0 20px;
 }
+
+
+/* ===================================================== */
+/*                    iPhone風スピナー                    */
+/* ===================================================== */
+
+.hidden {
+    display: none;
+}
+
+.ios-spinner {
+    width: 50px;
+    height: 50px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 999; 
+}
+
+.ios-spinner div {
+    transform-origin: 25px 25px;
+    animation: iosSpin 1s linear infinite;
+}
+
+.ios-spinner div::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 23px;
+    width: 4px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--color-navy); /* ← 君のテーマ色で統一 */
+}
+
+@keyframes iosSpin {
+    0% { opacity: 1; }
+    100% { opacity: 0.15; }
+}
+
+.ios-spinner div:nth-child(1) { transform: rotate(0deg); animation-delay: -0.9167s; }
+.ios-spinner div:nth-child(2) { transform: rotate(30deg); animation-delay: -0.8334s; }
+.ios-spinner div:nth-child(3) { transform: rotate(60deg); animation-delay: -0.75s; }
+.ios-spinner div:nth-child(4) { transform: rotate(90deg); animation-delay: -0.6667s; }
+.ios-spinner div:nth-child(5) { transform: rotate(120deg); animation-delay: -0.5834s; }
+.ios-spinner div:nth-child(6) { transform: rotate(150deg); animation-delay: -0.5s; }
+.ios-spinner div:nth-child(7) { transform: rotate(180deg); animation-delay: -0.4167s; }
+.ios-spinner div:nth-child(8) { transform: rotate(210deg); animation-delay: -0.3334s; }
+.ios-spinner div:nth-child(9) { transform: rotate(240deg); animation-delay: -0.25s; }
+.ios-spinner div:nth-child(10) { transform: rotate(270deg); animation-delay: -0.1667s; }
+.ios-spinner div:nth-child(11) { transform: rotate(300deg); animation-delay: -0.0834s; }
+.ios-spinner div:nth-child(12) { transform: rotate(330deg); animation-delay: 0s; }

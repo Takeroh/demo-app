@@ -333,6 +333,137 @@ def pencil_sketch_filter(img_pil: Image.Image, mood: float=0.3) -> Image.Image:
     sketch_rgb = cv2.cvtColor(sketch, cv2.COLOR_GRAY2RGB)
     return Image.fromarray(sketch_rgb)
 
+#セピア風（レトロな感じにする）
+def sepia_filter(img_pil: Image.Image, mood: float = 0.9) -> Image.Image:
+    """
+    軽めのセピア調フィルター。
+    mood: 0.0（効果なし）〜 1.0（セピア強め）
+    """
+
+    # mood を 0〜1 に制限
+    mood = max(0.0, min(1.0, mood))
+
+    # Pillow → RGB (numpy)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil).astype(np.float32) / 255.0  # 0〜1 に正規化
+
+    # セピア用 3x3 カーネル（RGB想定）
+    sepia_kernel = np.array(
+        [
+            [0.393, 0.769, 0.189],  # R'
+            [0.349, 0.686, 0.168],  # G'
+            [0.272, 0.534, 0.131],  # B'
+        ],
+        dtype=np.float32,
+    )
+
+    # 画像全体にセピア変換を適用
+    # img: (H, W, 3), kernel: (3, 3) → (H, W, 3)
+    sepia = img @ sepia_kernel.T
+    sepia = np.clip(sepia, 0.0, 1.0)
+
+    # mood で元画像とセピア画像をブレンド
+    out = (1.0 - mood) * img + mood * sepia
+    out = np.clip(out * 255.0, 0, 255).astype(np.uint8)
+
+    # 必要ならここで OpenCV の処理を足してもOK（ぼかしなど）
+    # 例: 軽いガンマ補正など
+    # out_bgr = cv2.cvtColor(out, cv2.COLOR_RGB2BGR)
+    # ... OpenCV処理 ...
+    # out = cv2.cvtColor(out_bgr, cv2.COLOR_BGR2RGB)
+
+    return Image.fromarray(out)
+
+#ドット絵
+def pixel_art_filter(img_pil: Image.Image, scale: float = (1/64)) -> Image.Image:
+    """
+    Pixel Art（ドット絵）風フィルター。
+    scale: 縮小率（0.1〜0.9）
+           例: 0.5 → 1/2 に縮小して2倍に拡大
+               0.25 → 1/4 に縮小して4倍に拡大（よりドット感UP）
+    """
+
+    # scale を安全に 0.1〜0.9 に制限
+    #scale = max(0.1, min(0.9, scale))
+
+    # Pillow → OpenCV(BGR)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    h, w = img_bgr.shape[:2]
+
+    # 縮小サイズ（ドット感の基準）
+    small_w = max(1, int(w * scale))
+    small_h = max(1, int(h * scale))
+
+    # ① 縮小
+    small = cv2.resize(
+        img_bgr,
+        (small_w, small_h),
+        interpolation=cv2.INTER_LINEAR
+    )
+
+    # ② 拡大（NEAREST→ドットがくっきり）
+    pixel_art = cv2.resize(
+        small,
+        (w, h),
+        interpolation=cv2.INTER_NEAREST
+    )
+
+    # BGR → RGB → Pillow
+    pixel_art_rgb = cv2.cvtColor(pixel_art, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(pixel_art_rgb)
+
+
+
+def soft_focus_filter(img_pil: Image.Image, mood: float = 2.0) -> Image.Image:
+    """
+    Soft Focus / Dreamy（ふんわり・夢）フィルター。
+    ・全体をガウシアンブラーでボカす
+    ・元画像とボケ画像をブレンドしてブルーム（発光）っぽくする
+
+    mood: 0.0（効果なし）〜 1.0（かなりふんわり）
+    """
+
+    # mood を 0〜1 に制限
+    #mood = max(0.0, min(1.0, mood))
+
+    # Pillow → RGB → BGR(OpenCV)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR).astype(np.float32) / 255.0  # 0〜1 に正規化
+
+    # ガウシアンブラーの強さ（mood に応じて変化）
+    # mood が強いほど σ を大きくしてボケを強くする
+    sigma = 1.5 + 6.0 * mood  # 1.5〜7.5 くらい
+    blurred = cv2.GaussianBlur(img_bgr, ksize=(0, 0), sigmaX=sigma, sigmaY=sigma)
+
+    # Screen 合成風（1 - (1-A)*(1-B)）
+    screen = 1.0 - (1.0 - img_bgr) * (1.0 - blurred)
+
+    # 元画像と Screen 画像をブレンドして「ふんわり」度合いを調整
+    # mood が 0 → 元画像そのまま
+    # mood が 1 → 全部 Screen 合成
+    out = (1.0 - mood) * img_bgr + mood * screen
+    out = np.clip(out * 255.0, 0, 255).astype(np.uint8)
+
+    # === ここから追加：外側だけピンクに書き換え ===
+    h, w = out.shape[:2]
+    border = 10  # フチの太さ（ピクセル数はお好みで調整）
+
+    # BGR でピンク（RとBを強め、Gを0）
+    pink_bgr = (255, 0, 255)
+
+    # 上下左右のフチを書き換え
+    out[:border, :] = pink_bgr      # 上
+    out[-border:, :] = pink_bgr     # 下
+    out[:, :border] = pink_bgr      # 左
+    out[:, -border:] = pink_bgr     # 右
+    # BGR → RGB → Pillow に戻す
+    out_rgb = cv2.cvtColor(out, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(out_rgb)
+
 # =================================================================
 # メイン処理関数
 # =================================================================
@@ -368,13 +499,15 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
 
         # 3. 判定結果に基づき画像処理を実行
         if style == "vivid":
-            new_img = enhance_image(img_pil)
-        elif style == "sad":
-            new_img = sad_filter(img_pil)
-        elif style == "sketch":
-            new_img = pencil_sketch_filter(img_pil)
+            new_img = soft_focus_filter(img_pil)
+        # if style == "vivid":
+        #     new_img = enhance_image(img_pil)
+        # elif style == "sad":
+        #     new_img = sad_filter(img_pil)
+        # elif style == "sketch":
+        #     new_img = pencil_sketch_filter(img_pil)
         else:
-            new_img = enhance_image(img_pil) # Default
+            new_img = soft_focus_filter(img_pil) # Default
 
         # 3. 処理後の画像を出力パスに保存する
         if meta_data['date_time']:

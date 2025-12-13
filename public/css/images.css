@@ -44,6 +44,13 @@
     left: 20px;
     width: 50px;
     opacity: 0.8;
+    animation: stamp-blink 2s step-start infinite;
+}
+/* 点滅用のキーフレーム */
+@keyframes stamp-blink {
+    0%   { opacity: 1; }
+    50%  { opacity: 0; }
+    100% { opacity: 1; }
 }
 
 .image-item > .num{

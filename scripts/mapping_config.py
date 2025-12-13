@@ -21,7 +21,10 @@ SCENERY_LABELS = [
 EMOTION_LABELS = [
     "joy",          # 楽しい、笑顔
     "excitement",   # 大興奮、盛り上がり
-    "calm",         # 落ち着く、まったり
+    "peaceful",     # 平和な、穏やか
+    "relaxed",      # リラックス、くつろぐ
+    "contemplative",# 物思いにふける、しみじみ
+    "wabi_sabi",    # 和の風情、侘び寂び
     "romantic",     # ロマンチック、うっとり
     "nostalgic",    # エモい、懐かしい
     "delicious",    # 美味しい！
@@ -76,14 +79,17 @@ MUSIC_MAPPING = {
 
 # 感情 -> スタンプID
 STAMP_MAPPING = {
-    "joy":          "stamp_big_smile",      # ニッコリ
-    "excitement":   "stamp_party_popper",   # クラッカー/キラキラ
-    "calm":         "stamp_tea_cup",        # お茶/湯気
-    "romantic":     "stamp_heart_pink",     # ピンクのハート
-    "nostalgic":    "stamp_film_camera",    # フィルムカメラ/セピア
-    "delicious":    "stamp_yummy_face",     # 舌ペロリ/カトラリー
-    "tired":        "stamp_sleeping_zzz",   # Zzz...
-    "surprise":     "stamp_exclamation",    # ビックリマーク
-    "sadness":      "stamp_crying_face",    # 涙
-    "default":      "stamp_star"
+    "joy":            "stamp_big_smile",      # ニッコリ
+    "excitement":     "stamp_party_popper",   # クラッカー/キラキラ
+    "peaceful":       "stamp_dove",           # 平和の鳩
+    "relaxed":        "stamp_relax",          # リラックス
+    "contemplative":  "stamp_thinking",       # 考える顔
+    "wabi_sabi":      "stamp_tea_cup",        # 茶碗/侘び寂び
+    "romantic":       "stamp_heart_pink",     # ピンクのハート
+    "nostalgic":      "stamp_film_camera",    # フィルムカメラ/セピア
+    "delicious":      "stamp_yummy_face",     # 舌ペロリ/カトラリー
+    "tired":          "stamp_sleeping_zzz",   # Zzz...
+    "surprise":       "stamp_exclamation",    # ビックリマーク
+    "sadness":        "stamp_crying_face",    # 涙
+    "default":        "stamp_star"
 }

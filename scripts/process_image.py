@@ -299,7 +299,7 @@ def sad_filter(img_pil: Image.Image, mood: float = 0.6) -> Image.Image:
     return Image.fromarray(img_rgb)
 
 #鉛筆
-def pencil_sketch_filter(img_pil: Image.Image, mood: float=0.5) -> Image.Image:
+def pencil_sketch_filter(img_pil: Image.Image, mood: float=0.3) -> Image.Image:
     """
     OpenCV の pencilSketch を使った鉛筆画フィルター。
     mood: 0.0（効果なし）〜 1.0（控えめ〜標準の鉛筆画）

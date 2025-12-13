@@ -4,6 +4,7 @@ import os
 import base64
 from openai import OpenAI
 from dotenv import load_dotenv
+import random
 
 # 設定ファイルと.envの読み込み
 sys.path.append(os.path.dirname(__file__))
@@ -33,48 +34,92 @@ def analyze_image(image_path):
 
 def decide_effects(json_str: str):
     try:
-        # 1. Node.jsから渡されたJSON文字列をパース
-        data = json.loads(json_str)
-        file_system_path = data['temp_path']
-        # if raw_path.startswith("/"):
-        #     # 先頭の / を取って public と結合する
-        #     file_system_path = os.path.join("public", raw_path.lstrip("/"))
-        # else:
-        #     file_system_path = os.path.join("public", raw_path)
+        # 1. 入力が単体かリスト（配列）か判定して統一
+        input_data = json.loads(json_str)
+        
+        # もしリストじゃなかったらリストに変換（後方互換性のため）
+        if not isinstance(input_data, list):
+            input_data = [input_data]
             
-        print(f"Reading file from: {file_system_path}", file=sys.stderr)
+        results = []
         
-        # 2. 効果音・スタンプを決定
-        # GPTで解析
-        gpt_result = analyze_image(file_system_path)
-        
-        # 結果を取得
-        scenery = gpt_result.get("scenery", "default")
-        emotion = gpt_result.get("emotion", "default")
-        
-        # マッピングからIDを取得
-        music_id = MUSIC_MAPPING.get(scenery, MUSIC_MAPPING["default"])
-        stamp_id = STAMP_MAPPING.get(emotion, STAMP_MAPPING["default"])
-        
-        # 次のセクション3で使う変数名に合わせて値をセット
-        sound_file = f"{music_id}.mp3"
-        stamp_file = f"{stamp_id}.png"
+        # ★ポイント: 「どのスタンプをもう使ったか」を管理する辞書
+        # キー: 感情ラベル, 値: まだ使っていないスタンプのリスト
+        available_stamps = {}
+
+        # マッピング定義からコピーしてシャッフルしておく（ランダム順にするため）
+        for emotion, stamps in STAMP_MAPPING.items():
+            if isinstance(stamps, list):
+                shuffled = stamps[:] # コピー作成
+                random.shuffle(shuffled) # シャッフル
+                available_stamps[emotion] = shuffled
+            else:
+                available_stamps[emotion] = [stamps] # 1個だけの場合もリスト化
+
+        # 2. 画像ごとにループ処理
+        for data in input_data:
+            file_system_path = data['temp_path']
+            print(f"Reading file from: {file_system_path}", file=sys.stderr)
             
-        # 3. 結果をJSONとして構築
-        result = {
-            # 'filepath': file_system_path,
-            'analysis':{
-                'scenery': scenery,
-                'emotion': emotion
-            },
-            'effects': {
-                'sound': f'/assets/sounds/{sound_file}',
-                'stamp': f'/assets/stamps/{stamp_file}'
-            }
-        }
+            # GPT解析
+            gpt_result = analyze_image(file_system_path)
+            scenery = gpt_result.get("scenery", "default")
+            emotion = gpt_result.get("emotion", "default")
+            
+            # 音楽決定 (シチュエーションに基づく)
+            music_id = MUSIC_MAPPING.get(scenery, MUSIC_MAPPING["default"])
+            
+            # ==========================================
+            # ★スタンプ決定 (重複防止ロジック)
+            # ==========================================
+            
+            # その感情の「まだ使っていないスタンプリスト」を取得
+            # なければデフォルトのリストを取得
+            candidates = available_stamps.get(emotion)
+            if not candidates:
+                 # 万が一空なら補充（リセット）
+                refill = STAMP_MAPPING.get(emotion, STAMP_MAPPING["default"])
+                if isinstance(refill, list):
+                    candidates = refill[:]
+                    random.shuffle(candidates)
+                else:
+                    candidates = [refill]
+                available_stamps[emotion] = candidates
+
+            # リストから1つ取り出す (pop) -> 「使った」ことになる
+            stamp_id = candidates.pop(0) 
+            
+            # もしリストが空になったら、次に来る同じ感情のために補充しておく
+            if len(candidates) == 0:
+                refill = STAMP_MAPPING.get(emotion, STAMP_MAPPING["default"])
+                if isinstance(refill, list):
+                    new_stock = refill[:]
+                    random.shuffle(new_stock)
+                    available_stamps[emotion] = new_stock
+                else:
+                    available_stamps[emotion] = [refill]
+
+            # ==========================================
+
+            sound_file = f"{music_id}.mp3"
+            stamp_file = f"{stamp_id}.png"
+            
+            # 結果リストに追加
+            results.append({
+                # 元のデータ情報を保持したい場合はここに追加
+                'temp_path': file_system_path,
+                'analysis':{
+                    'scenery': scenery,
+                    'emotion': emotion
+                },
+                'effects': {
+                    'sound': f'/assets/sounds/{sound_file}',
+                    'stamp': f'/assets/stamps/{stamp_file}'
+                }
+            })
 
         # 4. JSON文字列を標準出力に書き出し、Node.jsに返す
-        print(json.dumps(result))
+        print(json.dumps(results))
         print(f"Successfully decided effects", file=sys.stderr)
         sys.exit(0)
 

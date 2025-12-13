@@ -95,6 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 const hasLocation = imageData.location && typeof imageData.location.latitude === 'number' && typeof imageData.location.longitude === 'number';
+                // 追加：感情クラスを作る
+                const emotion = imageData.analysis?.emotion;   // "joy" or "sadness"
+                const emotionClass = emotion ? ` emotion-${emotion}` : '';
 
                 // ★ここがポイント: audioタグに id や class をつけて操作しやすくしています
                 const imageItem = `
@@ -103,7 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="image-address">${hasLocation ? '住所: 取得中...' : '住所: なし'}</p>
                     <div class="image-frame">
                         <img class="image" src="${imageData.filepath}" alt="写真 ${index + 1}">
-                        <img class="stamp" src="${imageData.effects.stamp}" alt="スタンプ画像">
+                        <img class="stamp${emotionClass}" src="${imageData.effects.stamp}" alt="スタンプ画像">
                     </div>
                     <audio class="bgm-player" controls src="${imageData.effects.sound}" type="audio/mp3">効果音</audio>
                     <p class="num">${index + 1} / ${sortedImageData.length}</p>

@@ -17,10 +17,20 @@
 
   <body>
     <img src="/images/ReTrip.png" alt="Re:Trip" class="title">
-    <div id="images" class="visible"></div>
+    <div id="images" class="visible">
+      <div id="images-container"></div>
+      <div class="slide-footer">
+        <a class="arrow prev" onclick="plusSlides(-1)">◀︎</a>
+        <div class="pagination"></div>
+        <a class="arrow next" onclick="plusSlides(1)">▶︎</a>
+      </div>
+      
+    </div>
+
     <div id="map">
       <div id="map-container"></div>
     </div>
+
     <button id="toggle-button">旅行経路を表示</button>
     <button id="del-button">リセット</button>
 

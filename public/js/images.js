@@ -36,7 +36,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // 4. 画像を画面に表示
 
-            const container = document.querySelector('#images');
+            const container = document.querySelector('#images-container');
+            const pagination = document.querySelector('.pagination');
             sortedImageData.forEach((imageData, index) => {
                 let date_time = '日時情報なし';
                 if (imageData.date_time) {
@@ -73,7 +74,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 `
                 container.insertAdjacentHTML('beforeend', imageItem);
+
+                // ドットの生成
+                
+                // const dot = document.createElement('span');
+                // dot.classList.add('dot');
+                // if (index === 0) {
+                //     dot.classList.add('active'); // 最初のドットをアクティブに
+                // }
+                // dot.onclick = () => currentSlide(index + 1);
+                // pagination.appendChild(dot);
             });
+
+            initSlideshow();
 
             const del_button = document.querySelector('#del-button');
             del_button.classList.add('visible');
@@ -109,3 +122,89 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("通信エラー:", error);
     }
 });
+
+let slideIndex = 1; // 現在のスライド番号 (1から開始)
+
+// ページロードまたは画像が動的に生成された後に実行
+function initSlideshow() {
+    // 1. ドットの生成
+    const totalItems = document.querySelectorAll('#images-container > .image-item').length;
+    const dotsContainer = document.querySelector('.pagination');
+    dotsContainer.innerHTML = ''; // 既存のドットをクリア
+
+    for (let i = 0; i < totalItems; i++) {
+        const dot = document.createElement('span');
+        dot.classList.add('dot');
+        if (i === 0) {
+            dot.classList.add('active'); // 最初のドットをアクティブに
+        }
+        dot.onclick = () => currentSlide(i + 1);
+        dotsContainer.appendChild(dot);
+    }
+    
+    // 初期表示
+    showSlides(slideIndex);
+    
+    // 2. スクロールイベントでドットを更新する処理を追加
+    document.getElementById('images-container').addEventListener('scroll', updateDotsOnScroll);
+}
+
+
+// 矢印ボタンクリック時の処理
+function plusSlides(n) {
+    showSlides(slideIndex += n);
+}
+
+// ドットクリック時の処理
+function currentSlide(n) {
+    showSlides(slideIndex = n);
+}
+
+// スライドの表示とスクロールを実行
+function showSlides(n) {
+    const imagesContainer = document.getElementById('images-container');
+    const totalItems = document.querySelectorAll('#images-container > .image-item').length;
+    const dots = document.querySelectorAll('.dot');
+    
+    // 境界チェック
+    if (n > totalItems) { slideIndex = 1 } 
+    if (n < 1) { slideIndex = totalItems }
+    
+    // 1. スクロールを実行
+    const itemWidth = imagesContainer.clientWidth;
+    // itemWidth * (slideIndex - 1) の位置までスムーズにスクロール
+    imagesContainer.scrollTo({
+        left: itemWidth * (slideIndex - 1),
+        behavior: 'smooth'
+    });
+    
+    // 2. ドットの active クラスを更新
+    dots.forEach(dot => dot.classList.remove('active'));
+    if (dots[slideIndex - 1]) {
+        dots[slideIndex - 1].classList.add('active');
+    }
+}
+
+// スクロール時に最も中央に近い要素を検出し、ドットを更新する処理
+function updateDotsOnScroll() {
+    const imagesContainer = document.getElementById('images-container');
+    const scrollLeft = imagesContainer.scrollLeft;
+    const itemWidth = imagesContainer.clientWidth;
+    
+    // 現在のスクロール位置に最も近いインデックスを計算
+    const nearestIndex = Math.round(scrollLeft / itemWidth) + 1;
+    
+    // if (nearestIndex !== slideIndex) {
+    //     // スクロールでページが変わった場合のみ、ドットを更新
+    //     currentSlide(nearestIndex); 
+    //     // ただし、この関数内で showSlides を呼ぶと無限ループになる可能性があるため、
+    //     // 実際にはドットの更新のみを行い、slideIndex の更新は別の変数で行う方が安全です。
+    // }
+    // 簡易的にするため、ここでは showSlides(nearestIndex) は実行しません
+    const dots = document.querySelectorAll('.dot');
+    dots.forEach(dot => dot.classList.remove('active'));
+    if (dots[nearestIndex - 1]) {
+        dots[nearestIndex - 1].classList.add('active');
+    }
+    slideIndex = nearestIndex;
+}

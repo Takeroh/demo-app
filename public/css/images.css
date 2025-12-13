@@ -6,10 +6,14 @@
 
 #images{
     display: none;
+    position: relative;
 }
 
 #images.visible{
     display: block;
+}
+
+#images-container{
     scroll-snap-type: x mandatory;
     width: 80%;
     margin: 20px auto;
@@ -18,7 +22,11 @@
     -webkit-overflow-scrolling: touch; /* スマホ対応のため必須 */
     overflow-scrolling: touch; /* スマホ対応のため必須 */
 }
-#images > .image-item{
+#images-container::-webkit-scrollbar{
+    display: none;
+}
+
+#images-container > .image-item{
     scroll-snap-align: center;
     height: 100%;
     width: 100%;
@@ -26,6 +34,7 @@
 }
 
 .image-item > p{
+    line-height: 1;
     margin: 0 auto 10px;
 }
 
@@ -35,6 +44,7 @@
 }
 
 .image-frame > .image{
+    display: block;
     width: 100%;
 }
 
@@ -46,12 +56,84 @@
     opacity: 0.8;
 }
 
-.image-item > .num{
+.image-item > audio{
+    display: block;
+    height: 48px;
     margin-top: 10px;
+}
+
+/* .image-item .scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.image-item .scrollbar::-webkit-scrollbar {
+    display: none;
+} */
+
+.image-item > .num{
+    margin: 10px auto 0;
     color: #fff;
 }
 
+.slide-footer{
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
+.slide-footer .arrow{
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    justify-content: center; /* 水平中央 */
+    align-items: center;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    padding: 5px;
+    /* margin-top: -29px; */
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    transition: 0.6s ease;
+    border-radius: 0 3px 3px 0;
+    user-select: none;
+    /* background-color: rgba(0,0,0,0.5); */
+}
+
+.slide-footer .prev{
+    left: 30px;
+    border-radius: 3px 0 0 3px;
+}
+
+.slide-footer .next{
+    right: 30px;
+    border-radius: 3px 0 0 3px;
+}
+
+
+.slide-footer .pagination{
+    text-align: center;
+    /* margin-top: 10px; */
+}
+
+.pagination > .dot{
+    cursor: pointer;
+    height: 8px;
+    width: 8px;
+    margin: 0 5px;
+    background-color: #fff;
+    border-radius: 50%;
+    display: inline-block;
+    transition: background-color 0.6s ease;
+}
+
+.pagination > .dot.active{
+    background-color: #bbb;
+}
 
 #del-button{
     display: none;

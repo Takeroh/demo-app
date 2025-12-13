@@ -332,6 +332,95 @@ def pencil_sketch_filter(img_pil: Image.Image, mood: float=0.3) -> Image.Image:
     # グレー → RGB → Pillow
     sketch_rgb = cv2.cvtColor(sketch, cv2.COLOR_GRAY2RGB)
     return Image.fromarray(sketch_rgb)
+#セピア風（レトロな感じにする）
+def sepia_filter(img_pil: Image.Image, mood: float = 0.9) -> Image.Image:
+    """
+    軽めのセピア調フィルター。
+    mood: 0.0（効果なし）〜 1.0（セピア強め）
+    """
+
+    # mood を 0〜1 に制限
+    mood = max(0.0, min(1.0, mood))
+
+    # Pillow → RGB (numpy)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil).astype(np.float32) / 255.0  # 0〜1 に正規化
+
+    # セピア用 3x3 カーネル（RGB想定）
+    sepia_kernel = np.array(
+        [
+            [0.393, 0.769, 0.189],  # R'
+            [0.349, 0.686, 0.168],  # G'
+            [0.272, 0.534, 0.131],  # B'
+        ],
+        dtype=np.float32,
+    )
+
+    # 画像全体にセピア変換を適用
+    # img: (H, W, 3), kernel: (3, 3) → (H, W, 3)
+    sepia = img @ sepia_kernel.T
+    sepia = np.clip(sepia, 0.0, 1.0)
+
+    # mood で元画像とセピア画像をブレンド
+    out = (1.0 - mood) * img + mood * sepia
+    out = np.clip(out * 255.0, 0, 255).astype(np.uint8)
+
+    # 必要ならここで OpenCV の処理を足してもOK（ぼかしなど）
+    # 例: 軽いガンマ補正など
+    # out_bgr = cv2.cvtColor(out, cv2.COLOR_RGB2BGR)
+    # ... OpenCV処理 ...
+    # out = cv2.cvtColor(out_bgr, cv2.COLOR_BGR2RGB)
+
+    return Image.fromarray(out)
+#油絵風のフィルタをかける
+
+import cv2
+import numpy as np
+from PIL import Image
+
+def oil_painting_filter(img_pil: Image.Image, mood: float = 0.4) -> Image.Image:
+    """
+    OpenCV xphoto.oilPainting を利用した油絵風フィルター。
+    mood : 0.0（弱い）〜 1.0（強い油絵）
+    """
+
+    # mood を 0〜1 に制限
+    mood = max(0.0, min(1.0, mood))
+
+    # Pillow → OpenCV(BGR)
+    img_pil = img_pil.convert("RGB")
+    img = np.array(img_pil)
+    img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # xphoto のパラメータ生成
+    # size  : 筆のタッチの粗さ
+    # dynRatio : 色の変化に対する筆跡の強さ
+    size = int(3 + 7 * mood)        # 3〜10 程度
+    dyn_ratio = int(5 + 20 * mood)  # 5〜25 程度
+
+    # xphoto の oilPainting を使う
+    try:
+        oil_bgr = cv2.xphoto.oilPainting(
+            img_bgr,
+            size=size,
+            dynRatio=dyn_ratio
+        )
+    except AttributeError:
+        raise RuntimeError(
+            "cv2.xphoto.oilPainting が使えません。\n"
+            "opencv-contrib-python をインストールしてください。\n"
+            "pip install opencv-contrib-python"
+        )
+
+    # BGR → RGB に戻す
+    oil_rgb = cv2.cvtColor(oil_bgr, cv2.COLOR_BGR2RGB)
+
+    # mood で元画像とブレンド（弱めの油絵を作れる）
+    out = (1.0 - mood) * img + mood * oil_rgb
+    out = np.clip(out, 0, 255).astype(np.uint8)
+
+    return Image.fromarray(out)
+
 
 # =================================================================
 # メイン処理関数
@@ -368,13 +457,13 @@ def process_image(input_path: str, output_dir: str, result_id: str, original_nam
 
         # 3. 判定結果に基づき画像処理を実行
         if style == "vivid":
-            new_img = enhance_image(img_pil)
-        elif style == "sad":
-            new_img = sad_filter(img_pil)
-        elif style == "sketch":
-            new_img = pencil_sketch_filter(img_pil)
+            new_img = oil_painting_filter(img_pil)
+        # elif style == "sad":
+        #     new_img = sad_filter(img_pil)
+        # elif style == "sketch":
+        #     new_img = pencil_sketch_filter(img_pil)
         else:
-            new_img = enhance_image(img_pil) # Default
+            new_img = oil_painting_filter(img_pil)# Default
 
         # 3. 処理後の画像を出力パスに保存する
         if meta_data['date_time']:

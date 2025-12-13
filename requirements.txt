@@ -1,5 +1,5 @@
 Pillow
 openai
 python-dotenv
-opencv-python-headless
 numpy
+opencv-contrib-python
